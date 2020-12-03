@@ -14,55 +14,66 @@ class Parameters:
 
 class ConstantParameters(Parameters):
 
-    def beta(self, a, t):
-        return 2.2
+    def __init__(self, beta=2.2, mu=1/3.47, sigma=1/3.47, p=0.5, h=0.005):
+        self.beta = beta
+        self.mu = mu
+        self.sigma = sigma
+        self.p = p
+        self.h = h
 
-    def mu(self, a):
-        return 1 / 3.47
+    def get_beta(self, a, t):
+        return self.beta
 
-    def sigma(self, a, t):
-        return 1 / 3.47
+    def get_mu(self, a):
+        return self.mu
 
-    def p(self):
-        return 0.5
+    def get_sigma(self, a, t):
+        return self.sigma
 
-    def h(self):
-        return 0.005
+    def get_p(self):
+        return self.p
+
+    def get_h(self):
+        return self.h
 
 
 class VariableParameters(Parameters):
-    def beta1(self, a):
+    def __init__(self, p=0.5, h=0.005):
+        self.p = p
+        self.h = h
+
+    def get_beta1(self, a):
         f = a/4 * (6-a)
         if f >= 0:
             return f
         return 0
 
-    def beta2(self, a, t):
+    def get_beta2(self, a, t):
         return sin(5*t) + 1
 
-    def beta(self, a, t):
-        return self.beta1(a) * self.beta2(a, t)
+    def get_beta(self, a, t):
+        return self.get_beta1(a) * self.get_beta2(a, t)
 
-    def mu(self, a):
+    def get_mu(self, a):
         f = a/5 * (7-a)
         if f >= 0:
             return f
         return 0
 
-    def sigma1(self, a):
+    def get_sigma1(self, a):
         f = a/4 * (7-a)
         if f >= 0:
             return f
         return 0
 
-    def sigma2(self, a, t):
+    def get_sigma2(self, a, t):
         return sin(3 * t) + 1
 
-    def sigma(self, a, t):
-        return self.sigma1(a) * self.sigma2(a, t)
+    def get_sigma(self, a, t):
+        return self.get_sigma1(a) * self.get_sigma2(a, t)
 
-    def p(self):
-        return 0.5
+    def get_p(self):
+        return self.p
 
-    def h(self):
-        return 0.005
+    def get_h(self):
+        return self.h
