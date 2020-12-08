@@ -6,7 +6,9 @@ Created on Wed Nov 25 23:54:35 2020
 @author: saitel
 """
 import numpy as np
-from numerical_solvers.integrators import trapezoidalRule
+import threading
+import time
+from math import floor
 
 
 class OneTimeBCT:
@@ -16,38 +18,89 @@ class OneTimeBCT:
         self.sigma = parameters.get_sigma
         self.p = parameters.get_p
         self.h = parameters.get_h
+        self.cycle = 0
+        self.cycles = 0
+        self.progress = 0
+        self.interrupted = False
 
-    def to_integrate(self, a, b, t_0):
-        return self.beta(a - b, t_0 + a - b) * self.sigma(b, t_0 + a)
+    def __exit__(self):
+        self.cycle = self.cycles
 
-    def dkappa(self, a, t_0, previous_kappa):
-        """
-        Parameters
-        ----------
-        a : last step calculated
-        t_0 : time of infection for the cohort.
+    def update_progress(self):
+        while self.cycle != self.cycles and self.interrupted is False:
+            time.sleep(5)
+            print('Cycle: {} / {}, Progress: {:.2f}%'.format(self.cycle,
+                                                             self.cycles,
+                                                             self.progress))
 
-        Returns
-        -------
-        float
-            the derivative of the probability of infection at the next age of
-            infection.
+    def integral(self, kappa, a, a_index, t_0, t_0_index):
 
-        """
-        integral_value = trapezoidalRule(self.to_integrate, a, t_0)
-        return -previous_kappa * (self.mu(a) + self.sigma(a, t_0 + a) +
-                                  self.p() * integral_value)
+        if a_index == 0:
+            raise Exception('integral should not be called before a[1].')
+        # print('To calculate kappa[', a_index + 1, ', ',  t_0_index, ']:')
+        # print('kappa[', 0, ', ',  t_0_index + a_index, ']')
 
-    def calculate_kappa(self, a, t_0):
+        result = 0.5 * (self.beta(a[a_index], t_0[t_0_index] + a[a_index]) *
+                        kappa[0, t_0_index + a_index] *
+                        self.sigma(0, t_0[t_0_index] + a[a_index]) +
+                        self.beta(0, t_0[t_0_index]) *
+                        kappa[a_index, t_0_index] *
+                        self.sigma(a[a_index], t_0[t_0_index] + a[a_index]))
 
-        kappa = np.zeros((len(t_0), len(a)))
-        count = 0
-        total = len(t_0) * len(a)
+        # [1, a_index - 1]
+        for i in range(1, a_index, 1):
+            #print('kappa[', i, ', ',  t_0_index + a_index - i, ']')
+            beta_v = self.beta(a[a_index - i], t_0[t_0_index] + a[a_index - i])
+            kappa_v = kappa[i, t_0_index + a_index - i]
+            sigma_v = self.sigma(a[a_index - i], t_0[t_0_index] + a[a_index])
+            result = result + beta_v * kappa_v * sigma_v
+
+        # print('kappa[', a_index, ', ',  t_0_index, ']')
+        return self.h() * result
+
+    def calculate_kappa(self, a_max, t_0_max):
+
+        t_0 = np.arange(0, t_0_max + a_max + self.h(), self.h())
+        a = np.arange(0, a_max + self.h(), self.h())
+
+        kappa = np.zeros((len(a), len(t_0)))
+        dkappa = np.zeros((len(a), len(t_0)))
+
+        # initialize cycle for a = 0
         for j in range(0, len(t_0)):
-            kappa[j][0] = 1
+            kappa[0, j] = 1
+            dkappa[0, j] = -(self.mu(a[0]) + self.sigma(a[0], t_0[j] + a[0]))
+
+        self.cycles = len(a) - 1
+
+        try:
+            x = threading.Thread(target=self.update_progress)
+            x.start()
+
             for i in range(1, len(a)):
-                count = count + 1
-                print('Progress: {:.2f} %'.format(count / total * 100))
-                kappa[j][i] = kappa[j][i-1] + self.h() * \
-                    self.dkappa(a[i-1], t_0[j], kappa[j][i-1])
-        return kappa
+                self.cycle = i
+                count = 0
+                total = len(t_0) - i
+                for j in range(0, len(t_0) - i):
+                    count = count + 1
+                    self.progress = count / total * 100
+
+                    # kappa using euler method
+                    kappa[i, j] = kappa[i-1, j] + self.h() * dkappa[i-1, j]
+
+                    # dkappa using kappa[i,j]
+                    temp = self.integral(kappa, a, i, t_0, j)
+                    dkappa[i, j] = - kappa[i, j] * (
+                        self.mu(a[i]) + self.sigma(a[i], t_0[i] + a[i]) +
+                        self.p() * temp)
+
+            t_0_max_index = np.where(t_0 == t_0_max)[0][0]
+
+            x.join(2)
+
+        except KeyboardInterrupt:
+            self.interrupted = True
+            print("Error: stopping the program")
+
+        return t_0[0:(t_0_max_index + 1)], a, kappa[:, 0:(t_0_max_index + 1)],\
+            dkappa[:, 0:(t_0_max_index + 1)]
