@@ -5,7 +5,7 @@ Created on Mon Nov 30 11:49:44 2020
 
 @author: saitel
 """
-from math import sin
+from math import sin, cos
 
 
 class Parameters:
@@ -23,6 +23,9 @@ class ConstantParameters(Parameters):
 
     def get_beta(self, a, t):
         return self.beta
+
+    def get_dbeta(self, a, t):
+        return 0
 
     def get_mu(self, a):
         return self.mu
@@ -53,6 +56,9 @@ class VariableParameters(Parameters):
 
     def get_beta(self, a, t):
         return self.get_beta1(a) * self.get_beta2(a, t)
+
+    def get_dbeta(self, a, t):
+        return cos(5*t) + 1
 
     def get_mu(self, a):
         f = a/5 * (7-a)
