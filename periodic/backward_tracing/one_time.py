@@ -8,7 +8,6 @@ Created on Wed Nov 25 23:54:35 2020
 import numpy as np
 import threading
 import time
-from math import floor
 
 
 class OneTimeBCT:
@@ -23,9 +22,6 @@ class OneTimeBCT:
         self.progress = 0
         self.interrupted = False
 
-    def __exit__(self):
-        self.cycle = self.cycles
-
     def update_progress(self):
         while self.cycle != self.cycles and self.interrupted is False:
             time.sleep(5)
@@ -37,25 +33,21 @@ class OneTimeBCT:
 
         if a_index == 0:
             raise Exception('integral should not be called before a[1].')
-        # print('To calculate kappa[', a_index + 1, ', ',  t_0_index, ']:')
-        # print('kappa[', 0, ', ',  t_0_index + a_index, ']')
 
         result = 0.5 * (self.beta(a[a_index], t_0[t_0_index] + a[a_index]) *
                         kappa[0, t_0_index + a_index] *
-                        self.sigma(0, t_0[t_0_index] + a[a_index]) +
-                        self.beta(0, t_0[t_0_index]) *
+                        self.sigma(a[0], t_0[t_0_index] + a[a_index]) +
+                        self.beta(a[0], t_0[t_0_index]) *
                         kappa[a_index, t_0_index] *
                         self.sigma(a[a_index], t_0[t_0_index] + a[a_index]))
 
         # [1, a_index - 1]
         for i in range(1, a_index, 1):
-            #print('kappa[', i, ', ',  t_0_index + a_index - i, ']')
             beta_v = self.beta(a[a_index - i], t_0[t_0_index] + a[a_index - i])
             kappa_v = kappa[i, t_0_index + a_index - i]
             sigma_v = self.sigma(a[a_index - i], t_0[t_0_index] + a[a_index])
             result = result + beta_v * kappa_v * sigma_v
 
-        # print('kappa[', a_index, ', ',  t_0_index, ']')
         return self.h() * result
 
     def calculate_kappa(self, a_max, t_0_max):
@@ -91,7 +83,7 @@ class OneTimeBCT:
                     # dkappa using kappa[i,j]
                     temp = self.integral(kappa, a, i, t_0, j)
                     dkappa[i, j] = - kappa[i, j] * (
-                        self.mu(a[i]) + self.sigma(a[i], t_0[i] + a[i]) +
+                        self.mu(a[i]) + self.sigma(a[i], t_0[j] + a[i]) +
                         self.p() * temp)
 
             t_0_max_index = np.where(t_0 == t_0_max)[0][0]
