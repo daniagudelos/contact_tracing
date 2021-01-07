@@ -58,10 +58,8 @@ class VariableParameters(Parameters):
         float.
 
         """
-        temp = a/4 * (6-a)
-        if temp >= 0:
-            return temp
-        return 0
+
+        return  max(0, a/4 * (6-a))
 
     def get_beta2(self, t):
         """
@@ -79,8 +77,8 @@ class VariableParameters(Parameters):
             float.
 
         """
-        
-        return sin(2* pi * t) + 1
+
+        return sin(2 * pi * t) + 1
 
     def get_beta(self, a, t):
         return self.get_beta1(a) * self.get_beta2(t)
@@ -102,26 +100,17 @@ class VariableParameters(Parameters):
             float.
 
         """
-        
-        temp = (3/2 - a/2) * sin( 2 * pi * t) + 1
-        if temp >= 0:
-            return temp
-        return 0
+
+        return max(0, (3 / 2 - a / 2) * sin(2 * pi * t) + 1)
 
     def get_mu(self, a):
-        f = a/5 * (7-a)
-        if f >= 0:
-            return f
-        return 0
+        return max(0, a / 5 * (7 - a))
 
     def get_sigma1(self, a):
-        temp = a/4 * (7-a)
-        if temp >= 0:
-            return temp
-        return 0
+        return max(0, a / 4 * (7 - a))
 
     def get_sigma2(self, t):
-        return sin(2* pi * t) + 1
+        return sin(2 * pi * t) + 1
 
     def get_sigma(self, a, t):
         return self.get_sigma1(a) * self.get_sigma2(t)
