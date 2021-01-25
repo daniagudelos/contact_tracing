@@ -55,7 +55,7 @@ class NoCT:
                                 self.sigma(a, t_0_v + a), 0, a_v)
         return exp(- result[0])
 
-    def get_kappa_hat(self, a_index, t_0_index):
+    def get_kappa_hat_at(self, a_index, t_0_index):
         return self.kappa_hat[a_index, t_0_index]
 
     def calculate_dkappa_hat(self, a_max, t_0_max):
