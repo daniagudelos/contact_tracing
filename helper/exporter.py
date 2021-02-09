@@ -16,9 +16,8 @@ class Exporter():
         return data
 
     @staticmethod
-    def save(t_0, a, kappa, dkappa, filepath):
+    def save(t_0, a, kappa, filepath):
         data = {'t_0': t_0,
                 'a': a,
-                'kappa': kappa,
-                'dkappa': dkappa}
+                'kappa': kappa}
         save_dictionary(data, filepath + '.spydata')
