@@ -57,8 +57,8 @@ class Plotter:
         ax.yaxis.pane.fill = False
         ax.zaxis.pane.fill = False
         ax.zaxis.set_major_formatter(FormatStrFormatter('%.02f'))
-        ax.plot_wireframe(X=t_0, Y=a, Z=kappa, color='black', linewidth=1,
-                          cstride=20, rstride=20)
+        ax.plot_wireframe(X=t_0, Y=a, Z=kappa, color='black', linewidth=1)#,
+                       #   cstride=20, rstride=20)
 
         plt.savefig(file_name + '.pdf', bbox_inches='tight')
         
