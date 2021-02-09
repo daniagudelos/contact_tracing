@@ -49,7 +49,7 @@ def main():
     one_time_bct_test(parameters.ConstantParameters(p=1), 'bct_ot_constant_p1')
 
     print('Running simulation BCT with variable parameters and p=0.5')
-    one_time_bct_test(parameters.VariableParameters(), 'bct_ot_variable_p05')
+    one_time_bct_test(parameters.VariableParameters(h=0.5), 'bct_ot_variable_p05')
     print('Running simulation BCT with variable parameters and p=0.0')
     one_time_bct_test(parameters.VariableParameters(p=0), 'bct_ot_variable_p0')
     print('Running simulation BCT with variable parameters and p=1.0')
