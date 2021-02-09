@@ -8,6 +8,9 @@ Created on Wed Jan 13 13:18:07 2021
 import numpy as np
 import scipy.integrate as integrate
 from math import exp
+from parameters.parameters import ConstantParameters, VariableParameters
+from helper.plotter import Plotter
+from helper.exporter import Exporter
 
 
 class NoCT:
@@ -17,25 +20,24 @@ class NoCT:
         self.sigma = parameters.get_sigma
         self.p = parameters.get_p
         self.h = parameters.get_h
-        self.cycle = 0
-        self.cycles = 0
-        self.progress = 0
-        self.interrupted = False
-        self.t_0 = np.arange(0, t_0_max + a_max + self.h(), self.h())
-        self.a = np.arange(0, a_max + self.h(), self.h())
-        self.kappa_hat = np.zeros((len(self.a), len(self.t_0)))
-        self.dkappa_hat = np.zeros((len(self.a), len(self.t_0)))
+        self.calculated = False
+        self.d_calculated = False
+        self.a_max = a_max
+        self.t_0_max = t_0_max
+        self.t_0_length = int(round(t_0_max / self.h(), 1))
+        self.a_length = int(round(a_max / self.h(), 1))
+        self.t_0_array = np.linspace(0.0, self.t_0_max, self.t_0_length + 1)
+        self.a_array = np.linspace(0.0, self.a_max, self.a_length + 1)
+        self.kappa_hat = np.zeros((self.t_0_length + 1, self.a_length + 1))
+        self.dkappa_hat = np.zeros((self.t_0_length + 1, self.a_length + 1))
 
-    def calculate_kappa_hat(self, a_max, t_0_max):
-        a = self.a
-        t_0 = self.t_0
-
-        for i in range(0, len(a)):
-            for j in range(0, len(t_0)):
-                self.kappa_hat[i, j] = self.calculate_kappa_hat_point(a[i],
-                                                                      t_0[j])
-
-        return t_0, a, self.kappa_hat
+    def calculate_kappa_hat(self):
+        for i in range(0, len(self.t_0_array)):
+            for j in range(0, len(self.a_array)):
+                self.kappa_hat[i, j] = self.calculate_kappa_hat_point(
+                    self.a_array[j], self.t_0_array[i])
+        self.calculated = True
+        return self.t_0_array, self.a_array, self.kappa_hat
 
     def calculate_kappa_hat_point(self, a_v, t_0_v):
         """
@@ -55,17 +57,60 @@ class NoCT:
                                 self.sigma(a, t_0_v + a), 0, a_v)
         return exp(- result[0])
 
-    def get_kappa_hat_at(self, a_index, t_0_index):
-        return self.kappa_hat[a_index, t_0_index]
+    def calculate_dkappa_hat(self):
+        if(self.calculated is False):
+            self.calculate_kappa_hat()
 
-    def calculate_dkappa_hat(self, a_max, t_0_max):
-        t_0 = self.t_0
-        a = self.a
+        for i in range(0, len(self.t_0_array)):
+            for j in range(0, len(self.a_array)):
+                self.dkappa_hat[i, j] = (self.kappa_hat(i, j) *
+                                         (-self.mu(self.a_array[j]) -
+                                          self.sigma(self.a_array[j],
+                                                     self.t_0_array[i] +
+                                                     self.a_array[j])))
+        return self.dkappa_hat
 
-        for i in range(0, len(a)):
-            for j in range(0, len(t_0)):
-                self.dkappa_hat[i, j] = self.get_kappa_hat(i, j) * \
-                    (-self.mu(a[i]) - self.sigma(a[i], t_0[j] + a[i]))
 
-    def get_dkappa_hat(self, a_index, t_0_index):
-        return self.dkappa_hat[a_index, t_0_index]
+def nct_test(pars, filename, a_max=2, t_0_max=6):
+    nct = NoCT(pars, a_max, t_0_max)
+    t_0_array, a_array, kappa_hat = nct.calculate_kappa_hat()
+    # dkappa_hat = nct.calculate_dkappa_hat()
+    a, t_0 = np.meshgrid(a_array, t_0_array)
+    Plotter.plot_3D(t_0, a, kappa_hat, filename + '_60_10', my=0.5)
+    Plotter.plot_3D(t_0, a, kappa_hat, filename + '_n60_10', azim=-60,
+                    my=0.5)
+    # Save data
+    Exporter.save(t_0_array, a_array, kappa_hat, filename)
+    return t_0, a, kappa_hat
+
+
+def main():
+    print('Running simulation NCT with constant parameters and p=0.0')
+    nct_test(ConstantParameters(p=0, h=0.5),
+             '../figures/non_periodic/NCT_constant_p0')
+    print('Running simulation NCT with constant parameters and p=1/3')
+    nct_test(ConstantParameters(p=1/3, h=0.5),
+             '../figures/non_periodic/NCT_constant_p03')
+    print('Running simulation NCT with constant parameters and p=2/3')
+    nct_test(ConstantParameters(p=2/3, h=0.5),
+             '../figures/non_periodic/NCT_constant_p06')
+    print('Running simulation NCT with constant parameters and p=1')
+    nct_test(ConstantParameters(p=1, h=0.5),
+             '../figures/non_periodic/NCT_constant_p1')
+
+    print('Running simulation NCT with variable parameters and p=0.0')
+    nct_test(VariableParameters(p=0, h=0.5),
+             '../figures/non_periodic/NCT_variable_p0')
+    print('Running simulation NCT with variable parameters and p=1/3')
+    nct_test(VariableParameters(p=1/3, h=0.5),
+             '../figures/non_periodic/NCT_variable_p03')
+    print('Running simulation NCT with variable parameters and p=2/3')
+    nct_test(VariableParameters(p=2/3, h=0.5),
+             '../figures/non_periodic/NCT_variable_p06')
+    print('Running simulation NCT with variable parameters and p=1')
+    nct_test(VariableParameters(p=1, h=0.5),
+             '../figures/non_periodic/NCT_variable_p1')
+
+
+if __name__ == '__main__':
+    main()
