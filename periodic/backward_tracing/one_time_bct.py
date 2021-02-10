@@ -93,6 +93,9 @@ class OneTimeBCT:
             sol = self.calculate_kappa_minus_for_cohort(t_0_index, a_index)
             self.kappa[t_0_index, 0: a_index + 1] = sol.y.reshape(-1)
 
+        # Fix numerical errors:
+        self.kappa = np.where(self.kappa < 0, 0, self.kappa)
+
         return self.t_0_array[0:(self.t_0_length + 1)], self.a_array,\
             self.kappa[0:(self.t_0_length + 1), :]
 
@@ -104,11 +107,13 @@ def one_time_bct_test(pars, filename, a_max=2, t_0_max=6):
     Plotter.plot_3D(t_0, a, kappa_minus, filename + '_60_10', my=0.5)
     Plotter.plot_3D(t_0, a, kappa_minus, filename + '_n60_10', azim=-60,
                     my=0.5)
+    return t_0_array, a_array, kappa_minus
 
 
 def main2():
-    one_time_bct_test(VariableParameters(p=1/3, h=0.05),
-                      '../../figures/periodic/bct_ot_constant_p03', 12, 2)
+    t_0_array, a_array, kappa_minus = one_time_bct_test(VariableParameters(
+        p=1/3, h=0.5), '../../figures/periodic/bct_ot_constant_p03', 12, 2)
+    return t_0_array, a_array, kappa_minus
 
 
 def main():
@@ -140,4 +145,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main2()
+    t_0_array, a_array, kappa_minus = main2()
