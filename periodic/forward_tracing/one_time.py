@@ -15,169 +15,137 @@ from scipy.integrate import trapz
 
 class OneTimeFCT:
     def __init__(self, parameters, n_gen, trunc, a_max, t_0_max):
-        # trunc: truncation for \int f_i-1 in the last generation (f_gen_max)
+        self.T = 1  # Period in days
         self.parameters = parameters
         self.beta = parameters.get_beta
         self.mu = parameters.get_mu
         self.sigma = parameters.get_sigma
         self.p = parameters.get_p
         self.h = parameters.get_h
-        self.gen_max = n_gen - 1
+        self.n_gen = n_gen
         self.a_max = a_max
+        self.a_length = int(round(self.a_max / self.h(), 1))
         self.t_0_max = t_0_max
-        self.trunc = trunc
-        self.nct = NoCT(self.parameters, self.trunc * self.gen_max +
+        self.t_0_length = int(round(self.t_0_max / self.h(), 1))
+        self.N_max = trunc  # N in outer integral
+        self.N_length = int(round(self.N_max / self.h(), 1))
+        self.nct = NoCT(self.parameters, self.N_max * (self.n_gen - 1) +
                         self.a_max, self.t_0_max)
-        self.bct = OneTimeBCT(self.parameters, self.trunc * self.gen_max +
+        self.bct = OneTimeBCT(self.parameters, self.N_max * (self.n_gen - 1) +
                               self.a_max, self.t_0_max)
-        _, _, kappa_minus = self.bct.calculate_kappa_minus()
-        _, _, self.kappa_hat = self.nct.calculate_kappa_hat()
+        self.t_0_array, self.a_array, self.kappa_hat = self.nct.calculate_kappa_hat()
         self.f = []
-        self.f.append(kappa_minus / self.kappa_hat)
-        self.t_0_length = int(round(t_0_max / self.h(), 1))
-        self.a_length = int(round(a_max / self.h(), 1))
+
+    def calculate_f_0(self):
+        _, _, kappa_minus = self.bct.calculate_kappa_minus()
+        f_0 = kappa_minus / self.kappa_hat
+        f_0 = np.where(f_0 > 1, 1, f_0)  # truncate ratio
+        f_0 = np.where(f_0 == 0, 1, f_0)  # 0 / 0 ~ 1
+        return f_0
 
     def calculate_kappa_plus(self):
         """
             Returns an array with kappa_plus
         """
-        kappa_hat = self.kappa_hat
+        kappa_hat = self.kappa_hat[:, 0:(self.a_length + 1)]
         f_plus = self.calculate_f_plus()
-        return kappa_hat * f_plus
+        return (self.t_0_array, self.a_array[0:(self.a_length + 1)],
+                kappa_hat * f_plus)
 
-    def calculate_d(self, f_old, t_0_array, t_0_index, a_array, b_length):
+    def calculate_d(self, t_0_index):
         f_old = self.f[-1]
-        b_array = a_array[0:b_length + 1]
-        temp = np.zeros_like(b_array)
+        temp = np.zeros(self.N_length + 1)
         for i in range(0, t_0_index + 1):
-            temp[i] = (self.beta(b_array[i], t_0_array[t_0_index]) *
+            temp[i] = (self.beta(self.a_array[i], self.t_0_array[t_0_index]) *
                        self.kappa_hat[t_0_index - i, i] *
                        f_old[t_0_index - i, i])
-        for i in range(t_0_index + 1, b_length + 1):
+        for i in range(t_0_index + 1, self.N_length + 1):
             if t_0_index != 0:
+                t_0_index_fixed = t_0_index
                 b_index_fixed = i % t_0_index
-            else:
-                b_index_fixed = i
-            temp[i] = (self.beta(b_array[i], t_0_array[t_0_index]) *
-                       self.kappa_hat[t_0_index - b_index_fixed, i] *
-                       f_old[t_0_index - b_index_fixed, i])
+            else:  # move t_0 one period forward
+                t_0_index_fixed = int(t_0_index + self.T / self.h())
+                b_index_fixed = int(i % t_0_index_fixed)
+            temp[i] = (self.beta(self.a_array[i], self.t_0_array[t_0_index]) *
+                       self.kappa_hat[t_0_index_fixed - b_index_fixed, i] *
+                       f_old[t_0_index_fixed - b_index_fixed, i])
 
         return trapz(temp)
 
-    def calculate_d2(self, f_old, t_0, t_0_index):
-        L = self.trunc   # ej. 60
-        b = np.arange(0, L + self.h(), self.h())  # points: L / h + 1
-
-        d = (self.beta(b[0], t_0[t_0_index]) *
-             self.nct.get_kappa_hat_at(b[0], t_0[t_0_index] - b[0]) *
-             f_old[b[0], t_0[t_0_index] - b[0]] +
-             self.beta(b[-1], t_0[t_0_index]) *
-             self.nct.get_kappa_hat_at(b[-1], t_0[t_0_index] - b[-1]) *
-             f_old[b[-1], t_0[t_0_index] - b[-1]]) * 0.5
-
-        # avoid first and last index:
-        for j in range(1, t_0_index + 1):
-            d += (self.beta(b[j], t_0[t_0_index]) *
-                  self.nct.get_kappa_hat_at(b[j], t_0[t_0_index] - b[j]) *
-                  f_old[b[j], t_0[t_0_index] - b[j]])
-
-        for j in range(t_0_index + 1, len(b) - 1):
-            # adjust b_index so that it is positive
-            b_index = j % t_0_index  # Only works if t_0 covers X whole periods
-            d += (self.beta(b[j], t_0[t_0_index]) *
-                  self.nct.get_kappa_hat_at(j, t_0_index - b_index) *
-                  f_old[j, t_0_index - b_index])
-        return self.h * d
-
     def calculate_f_plus(self):
-        # Calcuates f_plus_infinity: after convergence
+        # Calculates f_plus_infinity: after convergence
 
-        # Calculate first generation
-        for i in range(1, self.gen_max + 1):  # from 1 to gen_max
-            b_max = self.trunc * i
-            b_length = int(round(b_max / self.h(), 1))
-            # b_array = np.linspace(0.0, self.b_max + self.a_max,
-            #                b_length + self.a_length + 1)
-            a_array = np.linspace(0.0, self.a_max + b_max, self.a_length +
-                                  b_length + 1)
-            t_0_array = np.linspace(0.0, self.t_0_max, self.t_0_length + 1)
+        self.f.append(self.calculate_f_0())
+        # Calculate first generation: sum_{b=0}^{N} sum_{a=0}^{M}
+        for i in range(1, self.n_gen):  # from 1 to gen_max
 
-            for j in range(0, self.t_0_max + 1):  # from 0 to t_0_max
-                f_plus = np.ones((self.t_0_length + 1, self.a_length +
-                                  b_length + 1))
-                for k in range(1, len(a_array) + 1):  # from 1 to a_max + b_max
-                    f_plus[j, k] = self.calculate_f_plus_point(a_array, k,
-                                                               t_0_array, j,
-                                                               self.f[i-1],
-                                                               b_length)
-                self.f.append(f_plus)
-        return self.f  # [self.gen_max]
+            # hasta donde calculo en gen i: f_i(a; t_0)
+            M_max = self.a_max + (self.n_gen - i - 1) * self.N_max
+            M_length = self.a_length + (self.n_gen - i - 1) * self.N_length
+            f_plus = np.ones((self.t_0_length + 1, M_length + 1))
 
-    def calculate_f_plus_point(self, a_array, a_index, t_0_array, t_0_index,
-                               f_old, b_length):
-        # Input: vector a, index a, vector t_0, index t_0, matrix f_i-1
+            for j in range(0, self.t_0_length + 1):  # from 0 to t_0_max
+                for k in range(1, M_length + 1):  # from 1 to a_max + b_max
+                    f_plus[j, k] = self.calculate_f_plus_point(j, k, M_max,
+                                                               M_length)
+            self.f.append(f_plus)
+        return self.f[-1]
 
-        outer = 0
+    def calculate_f_plus_point(self, t_0_index, a_index, M_max, M_length):
+        # Input: index in t_0, index in a, upper bound of inner
+        # summation, number of points of inner summation
+
+        temp = np.zeros(self.N_length + 1)
 
         # Calculate d for t0[t_0_index]
-        d = self.calculate_d(f_old, t_0_array, t_0_index, a_array, b_length)
+        d = self.calculate_d(t_0_index)
 
-        # b = 0 and b = N
-        # N = len(b) - 1  # outer: b is from 0 to len(b) - 1 (len(b) points)
-        # outer = (self.calculate_phi(a_array, a_index, t_0_array, t_0_index, b, 0, f_old, d)
-        #         + self.calculate_phi(a_array, a_index, t_0_array, t_0_index, b, N, f_old,
-        #                              d)) * 0.5
+        for j in range(0, self.N_length + 1):  # from 0 to b_length
+            temp[j] = (self.calculate_phi(a_index, t_0_index, j, d, M_max,
+                                          M_length))
+        outer = trapz(temp)
+        return 1 - self.p() * outer
 
-        # for j in range(1, N):  # from 1 to N - 1
-        #    outer += (self.calculate_phi(a_array, a_index, t_0, t_0_index, b, j,
-        #                                 f_old, d))
-        # outer = outer * self.h
-        # return 1 - self.p * outer
+    def calculate_phi(self, a_index, t_0_index, b_index, d, M_max, M_length):
+        f_old = self.f[-1]
+        temp = np.zeros(M_length + 1)
 
-    def calculate_phi(self, a, a_index, t_0, t_0_index, b, b_index, f_old, d):
-        # Calculates Phi for a given value of b and a
-
-        M = int(a_index / self.h)  # inner
-
-        # b_index for M
-        if b_index > t_0_index:
+        if t_0_index != 0:
+            t_0_index_fixed = t_0_index
             b_index_fixed = b_index % t_0_index
-        else:
-            b_index_fixed = b_index
+        else:  # move t_0 one period forward
+            t_0_index_fixed = int(t_0_index + self.T / self.h())
+            b_index_fixed = int(b_index % t_0_index_fixed)
 
-        inner = (self.sigma(a[0] + b[b_index], t_0[t_0_index] + a[0]) *
-                 self.nct.get_kappa_hat_at(b_index, t_0_index - b_index_fixed)
-                 * f_old[b_index, t_0_index - b_index_fixed] +
-                 self.sigma(a[M] + b[b_index], t_0[t_0_index] + a[M]) *
-                 self.nct.get_kappa_hat_at(M + b_index, t_0_index -
-                                           b_index_fixed) *
-                 f_old[M + b_index, t_0_index - b_index_fixed]) * 0.5
+        for k in range(0, M_length + 1):
+            temp[k] = (self.sigma(self.a_array[k + b_index],
+                                  self.t_0_array[t_0_index] +
+                                  self.a_array[k]) *
+                       self.kappa_hat[t_0_index_fixed - b_index_fixed,
+                                      k + b_index] *
+                       f_old[t_0_index_fixed - b_index_fixed, k + b_index])
 
-        for k in range(1, M):  # 1 to M - 1
-            inner += (self.sigma(a[k] + b[b_index], t_0[t_0_index] + a[k])
-                      * self.nct.get_kappa_hat_at(k + b_index, t_0_index -
-                                                  b_index_fixed) *
-                      f_old[k + b_index, t_0_index - b_index_fixed])
-        inner = inner * self.h
-        return self.beta(b[b_index], t_0[t_0_index]) * inner / d
+        inner = trapz(temp)
+        return (self.beta(self.a_array[b_index], self.t_0_array[t_0_index]) *
+                inner / d)
 
 
 def one_time_fct_test(pars, filename, a_max=2, t_0_max=6):
-    otfct = OneTimeFCT(pars, n_gen=2, trunc=10, a_max=a_max, t_0_max=t_0_max)
-    kappa_plus = otfct.calculate_kappa_plus()
-    # a, t_0 = np.meshgrid(a_array, t_0_array)
-    # Plotter.plot_3D(t_0, a, kappa_minus, filename + '_60_10', my=0.5)
-    # Plotter.plot_3D(t_0, a, kappa_minus, filename + '_n60_10', azim=-60,
-    #                my=0.5)
-    return kappa_plus
+    otfct = OneTimeFCT(pars, n_gen=5, trunc=10, a_max=a_max, t_0_max=t_0_max)
+    t_0_array, a_array, kappa_plus = otfct.calculate_kappa_plus()
+    a, t_0 = np.meshgrid(a_array, t_0_array)
+    Plotter.plot_3D(t_0, a, kappa_plus, filename + '_60_10', my=0.5)
+    Plotter.plot_3D(t_0, a, kappa_plus, filename + '_n60_10', azim=-60,
+                    my=0.5)
+    return t_0_array, a_array, kappa_plus
 
 
 def main2():
-    kappa_plus = one_time_fct_test(VariableParameters(p=1/3, h=0.5),
-                                   '../figures/periodic/fct_ot_constant_p03',
-                                   a_max=2, t_0_max=2)
-    return kappa_plus
+    t_0_array, a_array, kappa_plus = one_time_fct_test(VariableParameters(
+        p=1/3, h=0.5), '../../figures/periodic/fct_ot_constant_p03', a_max=2,
+        t_0_max=2)
+    return t_0_array, a_array, kappa_plus
 
 
 if __name__ == '__main__':
-    kappa_plus = main2()
+    t_0_array, a_array, kappa_plus = main2()

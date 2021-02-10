@@ -84,6 +84,13 @@ def nct_test(pars, filename, a_max=2, t_0_max=6):
     return t_0, a, kappa_hat
 
 
+def main2():
+    t_0_array, a_array, kappa_hat = nct_test(
+        VariableParameters(p=1/3, h=0.5),
+        '../figures/non_periodic/NCT_variable_p03', 12, 2)
+    return t_0_array, a_array, kappa_hat
+
+
 def main():
     print('Running simulation NCT with constant parameters and p=0.0')
     nct_test(ConstantParameters(p=0, h=0.5),
@@ -113,4 +120,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    _, _, kappa_hat = main2()
