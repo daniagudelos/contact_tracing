@@ -22,20 +22,16 @@ class OneTimeBCT:
         self.t_0_max = t_0_max
         self.t_0_length = int(round(t_0_max / self.h(), 1))
         self.a_length = int(round(a_max / self.h(), 1))
-
         self.t_0_array = np.linspace(0.0, self.t_0_max + self.a_max,
                                      self.t_0_length + self.a_length + 1)
         self.a_array = np.linspace(0.0, self.a_max, self.a_length + 1)
-        self.kappa = np.ones((self.t_0_length + self.a_length + 1,
-                              self.a_length + 1))
-
-    def get_kappa(self, a_index, t_0_index):
-        return self.kappa[t_0_index, a_index]
+        self.kappa_minus = np.ones((self.t_0_length + self.a_length + 1,
+                                    self.a_length + 1))
 
     def integrand(self, b_index, t_0_index, a_index):
         return (self.beta(self.a_array[a_index - b_index],
                           self.t_0_array[a_index + t_0_index - b_index]) *
-                self.get_kappa(b_index, t_0_index + a_index - b_index) *
+                self.kappa_minus[t_0_index + a_index - b_index, b_index] *
                 self.sigma(self.a_array[b_index],
                            self.t_0_array[t_0_index + a_index]))
 
@@ -85,19 +81,19 @@ class OneTimeBCT:
             a_index = self.t_0_length + self.a_length - t_0_index
 
             sol = self.calculate_kappa_minus_for_cohort(t_0_index, a_index)
-            self.kappa[t_0_index, 0: a_index + 1] = sol.y.reshape(-1)
+            self.kappa_minus[t_0_index, 0: a_index + 1] = sol.y.reshape(-1)
 
         for t_0_index in range(self.t_0_length, -1, -1):  # From t_0  to 0
             a_index = self.a_length
 
             sol = self.calculate_kappa_minus_for_cohort(t_0_index, a_index)
-            self.kappa[t_0_index, 0: a_index + 1] = sol.y.reshape(-1)
+            self.kappa_minus[t_0_index, 0: a_index + 1] = sol.y.reshape(-1)
 
         # Fix numerical errors:
-        self.kappa = np.where(self.kappa < 0, 0, self.kappa)
+        self.kappa_minus = np.where(self.kappa_minus < 0, 0, self.kappa_minus)
 
         return self.t_0_array[0:(self.t_0_length + 1)], self.a_array,\
-            self.kappa[0:(self.t_0_length + 1), :]
+            self.kappa_minus[0:(self.t_0_length + 1), :]
 
 
 def one_time_bct_test(pars, filename, a_max=2, t_0_max=6):
