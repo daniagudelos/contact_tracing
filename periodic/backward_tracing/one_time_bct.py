@@ -108,7 +108,7 @@ def one_time_bct_test(pars, filename, a_max=2, t_0_max=6):
 
 def main2():
     t_0_array, a_array, kappa_minus = one_time_bct_test(VariableParameters(
-        p=1/3, h=0.5), '../../figures/periodic/bct_ot_constant_p03', 12, 2)
+        p=1/3, h=0.5), '../../figures/periodic/bct_ot_variable_p03', 12, 2)
     return t_0_array, a_array, kappa_minus
 
 

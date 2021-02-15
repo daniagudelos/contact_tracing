@@ -110,7 +110,10 @@ class OneTimeFCT:
         f_old = self.f[-1]
         temp = np.zeros(M_length + 1)
 
-        if t_0_index != 0:
+        if b_index <= t_0_index:
+            t_0_index_fixed = t_0_index
+            b_index_fixed = b_index
+        elif t_0_index != 0:
             t_0_index_fixed = t_0_index
             b_index_fixed = b_index % t_0_index
         else:  # move t_0 one period forward
@@ -142,9 +145,37 @@ def one_time_fct_test(pars, filename, a_max=2, t_0_max=6):
 
 def main2():
     t_0_array, a_array, kappa_plus = one_time_fct_test(VariableParameters(
-        p=1/3, h=0.5), '../../figures/periodic/fct_ot_constant_p03', a_max=2,
+        p=1/3, h=0.5), '../../figures/periodic/fct_ot_variable_p03', a_max=2,
         t_0_max=2)
     return t_0_array, a_array, kappa_plus
+
+
+def main():
+    print('Running simulation FCT with constant parameters and p=0.0')
+    one_time_fct_test(ConstantParameters(p=0, h=0.5),
+                      '../../figures/non_periodic/fct_ot_constant_p0')
+    print('Running simulation FCT with constant parameters and p=1/3')
+    one_time_fct_test(ConstantParameters(p=1/3, h=0.5),
+                      '../../figures/periodic/fct_ot_constant_p03')
+    print('Running simulation FCT with constant parameters and p=2/3')
+    one_time_fct_test(ConstantParameters(p=2/3, h=0.5),
+                      '../../figures/periodic/fct_ot_constant_p06')
+    print('Running simulation FCT with constant parameters and p=1')
+    one_time_fct_test(ConstantParameters(p=1, h=0.5),
+                      '../../figures/periodic/fct_ot_constant_p1')
+
+    print('Running simulation FCT with variable parameters and p=0.0')
+    one_time_fct_test(VariableParameters(p=0, h=0.5),
+                      '../../figures/non_periodic/fct_ot_variable_p0')
+    print('Running simulation FCT with variable parameters and p=1/3')
+    one_time_fct_test(VariableParameters(p=1/3, h=0.5),
+                      '../../figures/periodic/fct_ot_variable_p03')
+    print('Running simulation FCT with variable parameters and p=2/3')
+    one_time_fct_test(VariableParameters(p=2/3, h=0.5),
+                      '../../figures/periodic/fct_ot_variable_p06')
+    print('Running simulation FCT with variable parameters and p=1')
+    one_time_fct_test(VariableParameters(p=1, h=0.5),
+                      '../../figures/periodic/fct_ot_variable_p1')
 
 
 if __name__ == '__main__':

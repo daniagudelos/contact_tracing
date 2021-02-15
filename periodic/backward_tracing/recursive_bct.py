@@ -112,7 +112,7 @@ def recursive_bct_test(pars, filename, a_max=2, t_0_max=6):
 
 def main2():
     t_0_array, a_array, kappa_minus = recursive_bct_test(VariableParameters(
-        p=1/3, h=0.5), '../../figures/periodic/bct_re_constant_p03', 12, 2)
+        p=1/3, h=0.1), '../../figures/periodic/bct_re_variable_p03', 2, 2)
     return t_0_array, a_array, kappa_minus
 
 
