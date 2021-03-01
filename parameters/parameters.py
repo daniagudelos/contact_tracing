@@ -14,7 +14,7 @@ class Parameters:
 
 class ConstantParameters(Parameters):
 
-    def __init__(self, beta=2.2, mu=1/3.47, sigma=1/3.47, p=0.5, h=0.005):
+    def __init__(self, beta=1.0, mu=0.3, sigma=0.5, p=0.5, h=0.005):
         self.beta = beta
         self.mu = mu
         self.sigma = sigma

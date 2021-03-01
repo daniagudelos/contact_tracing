@@ -10,7 +10,6 @@ from periodic.backward_tracing.recursive_bct import RecursiveBCT
 from parameters.parameters import ConstantParameters, VariableParameters
 import numpy as np
 from helper.plotter import Plotter
-from scipy.integrate import trapz
 
 
 class RecursiveFCT:
@@ -70,7 +69,7 @@ class RecursiveFCT:
                        self.kappa_hat[t_0_index_fixed - b_index_fixed, i] *
                        f_old[t_0_index_fixed - b_index_fixed, i])
 
-        return trapz(temp)
+        return np.trapz(temp)
 
     def calculate_f_plus(self):
         # Calculates f_plus_infinity: after convergence
@@ -125,7 +124,7 @@ class RecursiveFCT:
                        self.kappa_hat[t_0_index_fixed - b_index_fixed,
                                       a_index + j] *
                        f_old[t_0_index_fixed - b_index_fixed, a_index + j])
-        return trapz(temp)
+        return np.trapz(temp)
 
     def calculate_outer2(self, t_0_index, a_index):
         f_old = self.f[-1]
@@ -144,7 +143,7 @@ class RecursiveFCT:
             temp[j] = (self.beta(self.a_array[j], self.t_0_array[t_0_index]) *
                        self.kappa_hat[t_0_index_fixed - b_index_fixed, j] *
                        f_old[t_0_index_fixed - b_index_fixed, j])
-        return trapz(temp)
+        return np.trapz(temp)
 
     def calculate_outer3(self, t_0_index, a_index, M_max, M_length, d):
         temp = np.zeros(self.N_length + 1)
@@ -153,7 +152,7 @@ class RecursiveFCT:
             temp[j] = self.calculate_phi3(a_index, t_0_index, j, d, M_max,
                                           M_length)
 
-        return trapz(temp)
+        return np.trapz(temp)
 
     def calculate_phi3(self, a_index, t_0_index, b_index, d, M_max, M_length):
         f_old = self.f[-1]
@@ -175,7 +174,7 @@ class RecursiveFCT:
                                       k + b_index] *
                        f_old[t_0_index_fixed - b_index_fixed, k + b_index])
 
-        inner = trapz(temp)
+        inner = np.trapz(temp)
         return (self.beta(self.a_array[b_index], self.t_0_array[t_0_index]) *
                 inner)
 

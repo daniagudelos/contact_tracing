@@ -10,7 +10,6 @@ from periodic.backward_tracing.one_time_bct import OneTimeBCT
 from parameters.parameters import ConstantParameters, VariableParameters
 import numpy as np
 from helper.plotter import Plotter
-from scipy.integrate import trapz
 
 
 class OneTimeFCT:
@@ -70,7 +69,7 @@ class OneTimeFCT:
                        self.kappa_hat[t_0_index_fixed - b_index_fixed, i] *
                        f_old[t_0_index_fixed - b_index_fixed, i])
 
-        return trapz(temp)
+        return np.trapz(temp)
 
     def calculate_f_plus(self):
         # Calculates f_plus_infinity: after convergence
@@ -103,7 +102,7 @@ class OneTimeFCT:
         for j in range(0, self.N_length + 1):  # from 0 to b_length
             temp[j] = (self.calculate_phi(a_index, t_0_index, j, d, M_max,
                                           M_length))
-        outer = trapz(temp)
+        outer = np.trapz(temp)
         return 1 - self.p() * outer
 
     def calculate_phi(self, a_index, t_0_index, b_index, d, M_max, M_length):
@@ -128,7 +127,7 @@ class OneTimeFCT:
                                       k + b_index] *
                        f_old[t_0_index_fixed - b_index_fixed, k + b_index])
 
-        inner = trapz(temp)
+        inner = np.trapz(temp)
         return (self.beta(self.a_array[b_index], self.t_0_array[t_0_index]) *
                 inner / d)
 

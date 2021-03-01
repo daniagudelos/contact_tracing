@@ -9,11 +9,12 @@ import numpy as np
 import scipy.integrate as integrate
 from math import exp
 from parameters.parameters import ConstantParameters, VariableParameters
+from periodic.contact_tracing import ContacTracingInterface
 from helper.plotter import Plotter
 from helper.exporter import Exporter
 
 
-class NoCT:
+class NoCT(ContacTracingInterface):
     def __init__(self, parameters, a_max, t_0_max):
         self.beta = parameters.get_beta
         self.mu = parameters.get_mu
@@ -30,6 +31,10 @@ class NoCT:
         self.a_array = np.linspace(0.0, self.a_max, self.a_length + 1)
         self.kappa_hat = np.zeros((self.t_0_length + 1, self.a_length + 1))
         self.dkappa_hat = np.zeros((self.t_0_length + 1, self.a_length + 1))
+
+    def calculate_kappa(self):
+        self.t_0_array, self.a_array, self.kappa_hat = self.calculate_kappa()
+        return self.t_0_array, self.a_array, self.kappa_hat
 
     def calculate_kappa_hat(self):
         for i in range(0, len(self.t_0_array)):
