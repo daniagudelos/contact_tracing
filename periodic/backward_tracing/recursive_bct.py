@@ -72,9 +72,9 @@ class RecursiveBCT:
     def calculate_kappa_minus_for_cohort(self, t_0_index, a_index):
         a_array = self.a_array[0:a_index + 1]  # from 0 to a_index
         kappa0 = [1]  # must be a 1-d array!
-        sol = solve_ivp(self.fun, [0, a_array[-1]], kappa0, method='RK45',
+        sol = solve_ivp(self.fun, [0, a_array[-1]], kappa0, method='Radau',
                         t_eval=a_array, dense_output=True, vectorized=True,
-                        args=[t_0_index])
+                        args=[t_0_index], rtol=1e-3, atol=1e-9)
         return sol
 
     def calculate_kappa_minus(self):
@@ -94,7 +94,7 @@ class RecursiveBCT:
             self.kappa_minus[t_0_index, 0: a_index + 1] = sol.y.reshape(-1)
 
         # Fix numerical errors:
-        self.kappa_minus = np.where(self.kappa_minus < 0, 0, self.kappa_minus)
+        self.kappa_minus = np.where(self.kappa_minus < 1e-10, 0, self.kappa_minus)
 
         return self.t_0_array[0:(self.t_0_length + 1)], self.a_array,\
             self.kappa_minus[0:(self.t_0_length + 1), :]

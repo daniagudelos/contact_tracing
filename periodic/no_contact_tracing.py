@@ -9,17 +9,16 @@ import numpy as np
 import scipy.integrate as integrate
 from math import exp
 from parameters.parameters import ConstantParameters, VariableParameters
-from periodic.contact_tracing import ContacTracingInterface
 from helper.plotter import Plotter
 from helper.exporter import Exporter
 
 
-class NoCT(ContacTracingInterface):
+class NoCT():
     def __init__(self, parameters, a_max, t_0_max):
         self.beta = parameters.get_beta
         self.mu = parameters.get_mu
         self.sigma = parameters.get_sigma
-        self.p = parameters.get_p
+        self.p = 0
         self.h = parameters.get_h
         self.calculated = False
         self.d_calculated = False

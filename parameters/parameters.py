@@ -71,6 +71,7 @@ class VariableParameters(Parameters):
         self.p = p
         self.h = h
         self.period = period
+        self.period_length = int(round(period / h, 1))
 
     def get_beta1(self, a):
         """
@@ -150,6 +151,9 @@ class VariableParameters(Parameters):
 
     def get_period(self):
         return self.period
+
+    def get_period_length(self):
+        return self.period_length
 
 
 class TestParameters1(Parameters):

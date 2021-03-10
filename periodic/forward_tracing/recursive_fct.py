@@ -7,14 +7,15 @@ Created on Thu Jan 21 19:05:06 2021
 """
 from periodic.no_contact_tracing import NoCT
 from periodic.backward_tracing.recursive_bct import RecursiveBCT
-from parameters.parameters import ConstantParameters, VariableParameters
+from parameters.parameters import ConstantParameters, VariableParameters, TestParameters1
 import numpy as np
 from helper.plotter import Plotter
 
 
 class RecursiveFCT:
     def __init__(self, parameters, n_gen, trunc, a_max, t_0_max):
-        self.T = 1  # Period in days
+        self.period = parameters.get_period()  # Period in days
+        self.period_length = parameters.get_period_length()
         self.parameters = parameters
         self.beta = parameters.get_beta
         self.mu = parameters.get_mu
@@ -54,16 +55,16 @@ class RecursiveFCT:
     def calculate_d(self, t_0_index):
         f_old = self.f[-1]
         temp = np.zeros(self.N_length + 1)
-        for i in range(0, t_0_index + 1):
+        for i in range(0, min(t_0_index + 1, self.N_length)):
             temp[i] = (self.beta(self.a_array[i], self.t_0_array[t_0_index]) *
                        self.kappa_hat[t_0_index - i, i] *
                        f_old[t_0_index - i, i])
-        for i in range(t_0_index + 1, self.N_length + 1):
+        for i in range(min(t_0_index + 1, self.N_length), self.N_length + 1):
             if t_0_index != 0:
                 t_0_index_fixed = t_0_index
                 b_index_fixed = i % t_0_index
             else:  # move t_0 one period forward
-                t_0_index_fixed = int(t_0_index + self.T / self.h())
+                t_0_index_fixed = t_0_index + self.period_length
                 b_index_fixed = int(i % t_0_index_fixed)
             temp[i] = (self.beta(self.a_array[i], self.t_0_array[t_0_index]) *
                        self.kappa_hat[t_0_index_fixed - b_index_fixed, i] *
@@ -84,18 +85,17 @@ class RecursiveFCT:
             f_plus = np.ones((self.t_0_length + 1, M_length + 1))
 
             for j in range(0, self.t_0_length + 1):  # from 0 to t_0_max
+                # Calculate d for t0[t_0_index]
+                d = self.calculate_d(j)
                 for k in range(1, M_length + 1):  # from 1 to a_max + b_max
                     f_plus[j, k] = self.calculate_f_plus_point(j, k, M_max,
-                                                               M_length)
+                                                               M_length, d)
             self.f.append(f_plus)
         return self.f[-1]
 
-    def calculate_f_plus_point(self, t_0_index, a_index, M_max, M_length):
+    def calculate_f_plus_point(self, t_0_index, a_index, M_max, M_length, d):
         # Input: index in t_0, index in a, upper bound of inner
         # summation, number of points of inner summation
-
-        # Calculate d for t0[t_0_index]
-        d = self.calculate_d(t_0_index)
 
         # integral 1
         outer1 = self.calculate_outer1(t_0_index, a_index)
@@ -109,16 +109,16 @@ class RecursiveFCT:
     def calculate_outer1(self, t_0_index, a_index):
         f_old = self.f[-1]
         temp = np.zeros(self.N_length + 1)
-        for j in range(0, t_0_index + 1):
+        for j in range(0, min(t_0_index + 1, self.N_length)):
             temp[j] = (self.beta(self.a_array[j], self.t_0_array[t_0_index]) *
                        self.kappa_hat[t_0_index - j, a_index + j] *
                        f_old[t_0_index - j, a_index + j])
-        for j in range(t_0_index + 1, self.N_length + 1):
+        for j in range(min(t_0_index + 1, self.N_length), self.N_length + 1):
             if t_0_index != 0:
                 t_0_index_fixed = t_0_index
                 b_index_fixed = j % t_0_index
             else:  # move t_0 one period forward
-                t_0_index_fixed = int(t_0_index + self.T / self.h())
+                t_0_index_fixed = t_0_index + self.period_length
                 b_index_fixed = int(j % t_0_index_fixed)
             temp[j] = (self.beta(self.a_array[j], self.t_0_array[t_0_index]) *
                        self.kappa_hat[t_0_index_fixed - b_index_fixed,
@@ -129,16 +129,16 @@ class RecursiveFCT:
     def calculate_outer2(self, t_0_index, a_index):
         f_old = self.f[-1]
         temp = np.zeros(self.N_length + 1)
-        for j in range(0, t_0_index + 1):
+        for j in range(0, min(t_0_index + 1, self.N_length)):
             temp[j] = (self.beta(self.a_array[j], self.t_0_array[t_0_index]) *
                        self.kappa_hat[t_0_index - j, j] *
                        f_old[t_0_index - j, j])
-        for j in range(t_0_index + 1, self.N_length + 1):
+        for j in range(min(t_0_index + 1, self.N_length), self.N_length + 1):
             if t_0_index != 0:
                 t_0_index_fixed = t_0_index
                 b_index_fixed = j % t_0_index
             else:  # move t_0 one period forward
-                t_0_index_fixed = int(t_0_index + self.T / self.h())
+                t_0_index_fixed = t_0_index + self.period_length
                 b_index_fixed = int(j % t_0_index_fixed)
             temp[j] = (self.beta(self.a_array[j], self.t_0_array[t_0_index]) *
                        self.kappa_hat[t_0_index_fixed - b_index_fixed, j] *
@@ -165,7 +165,7 @@ class RecursiveFCT:
             t_0_index_fixed = t_0_index
             b_index_fixed = b_index % t_0_index
         else:  # move t_0 one period forward
-            t_0_index_fixed = int(t_0_index + self.T / self.h())
+            t_0_index_fixed = t_0_index + self.period_length
             b_index_fixed = int(b_index % t_0_index_fixed)
 
         for k in range(0, M_length + 1):
@@ -186,6 +186,17 @@ def recursive_fct_test(pars, filename, a_max=2, t_0_max=6):
     Plotter.plot_3D(t_0, a, kappa_plus, filename + '_60_10', my=0.5)
     Plotter.plot_3D(t_0, a, kappa_plus, filename + '_n60_10', azim=-60,
                     my=0.5)
+    return t_0_array, a_array, kappa_plus
+
+
+def main3():
+    T = 7  # days
+    beta2 = np.array([1, 1, 1, 1, 3, 3, 3, 3, 3.5, 3.5, 3.5, 3.5, 4, 4, 4, 4,
+                      3, 3, 3, 3, 2, 2, 2, 2, 1, 1, 1, 1])
+    par = TestParameters1(beta2, p=1/3, h=0.25, period_time=T)
+    t_0_array, a_array, kappa_plus = recursive_fct_test(
+        par, '../../figures/periodic/fct_re_variable_p03', a_max=T,
+        t_0_max=T)
     return t_0_array, a_array, kappa_plus
 
 
@@ -225,4 +236,4 @@ def main():
 
 
 if __name__ == '__main__':
-    t_0_array, a_array, kappa_plus = main2()
+    t_0_array, a_array, kappa_plus = main3()

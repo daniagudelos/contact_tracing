@@ -6,7 +6,7 @@ Created on Mon Feb  8 08:47:09 2021
 @author: saitel
 """
 from scipy.integrate import trapz, solve_ivp
-from parameters.parameters import ConstantParameters, VariableParameters
+from parameters.parameters import ConstantParameters, VariableParameters, TestParameters1
 import numpy as np
 from helper.plotter import Plotter
 
@@ -67,9 +67,11 @@ class OneTimeBCT:
     def calculate_kappa_minus_for_cohort(self, t_0_index, a_index):
         a_array = self.a_array[0:a_index + 1]  # from 0 to a_index
         kappa0 = [1]  # must be a 1-d array!
-        sol = solve_ivp(self.fun, [0, a_array[-1]], kappa0, method='RK45',
+        sol = solve_ivp(self.fun, [0, a_array[-1]], kappa0, method='Radau',
                         t_eval=a_array, dense_output=True, vectorized=True,
-                        args=[t_0_index])
+                        args=[t_0_index], rtol=1e-3, atol=1e-9)
+        if(sol.y.reshape(-1).any() < 0):
+            print('Oh oh')
         return sol
 
     def calculate_kappa_minus(self):
@@ -90,7 +92,7 @@ class OneTimeBCT:
             self.kappa_minus[t_0_index, 0: a_index + 1] = sol.y.reshape(-1)
 
         # Fix numerical errors:
-        self.kappa_minus = np.where(self.kappa_minus < 0, 0, self.kappa_minus)
+        self.kappa_minus = np.where(self.kappa_minus < 1e-10, 0, self.kappa_minus)
 
         return self.t_0_array[0:(self.t_0_length + 1)], self.a_array,\
             self.kappa_minus[0:(self.t_0_length + 1), :]
@@ -103,6 +105,17 @@ def one_time_bct_test(pars, filename, a_max=2, t_0_max=6):
     Plotter.plot_3D(t_0, a, kappa_minus, filename + '_60_10', my=0.5)
     Plotter.plot_3D(t_0, a, kappa_minus, filename + '_n60_10', azim=-60,
                     my=0.5)
+    return t_0_array, a_array, kappa_minus
+
+
+def main3():
+    T = 7  # days
+    beta2 = np.array([1, 1, 1, 1, 3, 3, 3, 3, 3.5, 3.5, 3.5, 3.5, 4, 4, 4, 4,
+                      3, 3, 3, 3, 2, 2, 2, 2, 1, 1, 1, 1])
+    par = TestParameters1(beta2, p=1/3, h=0.25, period_time=T)
+    t_0_array, a_array, kappa_minus = one_time_bct_test(
+        par, '../../figures/periodic/fct_re_variable_p03', a_max=7*T,
+        t_0_max=2*T)
     return t_0_array, a_array, kappa_minus
 
 
@@ -141,4 +154,4 @@ def main():
 
 
 if __name__ == '__main__':
-    t_0_array, a_array, kappa_minus = main2()
+    t_0_array, a_array, kappa_minus = main3()
