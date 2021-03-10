@@ -10,6 +10,7 @@ from periodic.backward_tracing.one_time_bct import OneTimeBCT
 from parameters.parameters import ConstantParameters, VariableParameters, TestParameters1
 import numpy as np
 from helper.plotter import Plotter
+from helper.exporter import Exporter
 
 
 class OneTimeFCT:
@@ -27,20 +28,20 @@ class OneTimeFCT:
         self.a_length = int(round(self.a_max / self.h(), 1))
         self.t_0_max = t_0_max
         self.t_0_length = int(round(self.t_0_max / self.h(), 1))
-        self.N_max = trunc  # N in outer integral
-        self.N_length = int(round(self.N_max / self.h(), 1))
-        self.nct = NoCT(self.parameters, self.N_max * (self.n_gen - 1) +
+        self.trunc = trunc  # N in outer integral
+        self.trunc_length = int(round(self.trunc / self.h(), 1))
+        self.nct = NoCT(self.parameters, self.trunc * (self.n_gen - 1) +
                         self.a_max, self.t_0_max)
-        self.bct = OneTimeBCT(self.parameters, self.N_max * (self.n_gen - 1) +
-                              self.a_max, self.t_0_max)
+        self.bct = OneTimeBCT(self.parameters, self.trunc * (self.n_gen - 1)
+                              + self.a_max, self.t_0_max)
         self.t_0_array, self.a_array, self.kappa_hat = self.nct.calculate_kappa_hat()
         self.f = []
 
     def calculate_f_0(self):
         _, _, kappa_minus = self.bct.calculate_kappa_minus()
+        #kappa_minus = Exporter.load_variable('kappa_ot_bct')
+        Exporter.save_variable(kappa_minus, 'kappa_ot_bct')
         f_0 = kappa_minus / self.kappa_hat
-        f_0 = np.where(f_0 > 1, 1, f_0)  # truncate ratio
-        f_0 = np.where(f_0 == 0, 1, f_0)  # 0 / 0 ~ 1
         return f_0
 
     def calculate_kappa_plus(self):
@@ -52,23 +53,13 @@ class OneTimeFCT:
         return (self.t_0_array, self.a_array[0:(self.a_length + 1)],
                 kappa_hat * f_plus)
 
-    def calculate_d(self, t_0_index):
+    def calculate_d(self, t_0_index, N_length):
         f_old = self.f[-1]
-        temp = np.zeros(self.N_length + 1)
-        for i in range(0, min(t_0_index + 1, self.N_length)):
+        temp = np.zeros(N_length + 1)
+        for i in range(0, N_length + 1):
+            index = (t_0_index - i) % self.period_length
             temp[i] = (self.beta(self.a_array[i], self.t_0_array[t_0_index]) *
-                       self.kappa_hat[t_0_index - i, i] *
-                       f_old[t_0_index - i, i])
-        for i in range(min(t_0_index + 1, self.N_length), self.N_length + 1):
-            if t_0_index != 0:
-                t_0_index_fixed = t_0_index
-                b_index_fixed = i % t_0_index
-            else:  # move t_0 one period forward
-                t_0_index_fixed = t_0_index + self.period_length
-                b_index_fixed = int(i % t_0_index_fixed)
-            temp[i] = (self.beta(self.a_array[i], self.t_0_array[t_0_index]) *
-                       self.kappa_hat[t_0_index_fixed - b_index_fixed, i] *
-                       f_old[t_0_index_fixed - b_index_fixed, i])
+                       self.kappa_hat[index, i] * f_old[index, i])
 
         return np.trapz(temp)
 
@@ -80,56 +71,39 @@ class OneTimeFCT:
         for i in range(1, self.n_gen):  # from 1 to gen_max
 
             # hasta donde calculo en gen i: f_i(a; t_0)
-            M_max = self.a_max + (self.n_gen - i - 1) * self.N_max
-            M_length = self.a_length + (self.n_gen - i - 1) * self.N_length
+            M_length = self.a_length + (self.n_gen - i - 1) * self.trunc_length
+            N_length = self.a_length + (self.n_gen - i) * self.trunc_length
             f_plus = np.ones((self.t_0_length + 1, M_length + 1))
 
-            for j in range(0, self.t_0_length + 1):  # from 0 to t_0_max
+            for t_0_index in range(0, self.t_0_length + 1):  # from 0 to t_0_max
                 # Calculate d for t0[t_0_index]
-                d = self.calculate_d(j)
-                for k in range(1, M_length + 1):  # from 1 to a_max + b_max
-                    f_plus[j, k] = self.calculate_f_plus_point(j, k, M_max,
-                                                               M_length, d)
+                d = self.calculate_d(t_0_index, N_length)
+                for a_index in range(1, M_length + 1):  # from 1 to a_max + b_max
+                    outer = self.calculate_f_plus_point(t_0_index, a_index,
+                                                        N_length)
+                    f_plus[t_0_index, a_index] = 1 - self.p() / d * outer
             self.f.append(f_plus)
         return self.f[-1]
 
-    def calculate_f_plus_point(self, t_0_index, a_index, M_max, M_length, d):
+    def calculate_f_plus_point(self, t_0_index, M_length, N_length):
         # Input: index in t_0, index in a, upper bound of inner
         # summation, number of points of inner summation
 
-        temp = np.zeros(self.N_length + 1)
-
-        for j in range(0, self.N_length + 1):  # from 0 to b_length
-            temp[j] = (self.calculate_phi(a_index, t_0_index, j, d, M_max,
-                                          M_length))
-        outer = np.trapz(temp)
-        return 1 - self.p() * outer
-
-    def calculate_phi(self, a_index, t_0_index, b_index, d, M_max, M_length):
         f_old = self.f[-1]
-        temp = np.zeros(M_length + 1)
 
-        if b_index <= t_0_index:
-            t_0_index_fixed = t_0_index
-            b_index_fixed = b_index
-        elif t_0_index != 0:
-            t_0_index_fixed = t_0_index
-            b_index_fixed = b_index % t_0_index
-        else:  # move t_0 one period forward
-            t_0_index_fixed = t_0_index + self.period_length
-            b_index_fixed = int(b_index % t_0_index_fixed)
+        tempi = np.zeros(M_length + 1)
+        for a_index in range(0, M_length + 1):
+            temp = np.zeros(N_length - a_index + 1)
+            for b_index in range(0, N_length - a_index):  # from 0 to b_length
+                index = (t_0_index - b_index) % self.period_length
+                temp[b_index] = (self.beta(self.a_array[b_index],
+                                           self.t_0_array[t_0_index]) *
+                                 (self.mu(self.a_array[a_index + b_index]) *
+                                 self.kappa_hat[index, a_index + b_index] *
+                                 f_old[index, a_index + b_index]))
+            tempi[a_index] = np.trapz(temp)
 
-        for k in range(0, M_length + 1):
-            temp[k] = (self.sigma(self.a_array[k + b_index],
-                                  self.t_0_array[t_0_index] +
-                                  self.a_array[k]) *
-                       self.kappa_hat[t_0_index_fixed - b_index_fixed,
-                                      k + b_index] *
-                       f_old[t_0_index_fixed - b_index_fixed, k + b_index])
-
-        inner = np.trapz(temp)
-        return (self.beta(self.a_array[b_index], self.t_0_array[t_0_index]) *
-                inner / d)
+        return np.trapz(tempi)
 
 
 def one_time_fct_test(pars, filename, a_max=2, t_0_max=6):
@@ -148,8 +122,8 @@ def main3():
                       3, 3, 3, 3, 2, 2, 2, 2, 1, 1, 1, 1])
     par = TestParameters1(beta2, p=1/3, h=0.25, period_time=T)
     t_0_array, a_array, kappa_plus = one_time_fct_test(
-        par, '../../figures/periodic/fct_re_variable_p03', a_max=T,
-        t_0_max=T)
+        par, '../../figures/periodic/fct_ot_variable_p03', a_max=T,
+        t_0_max=2 * T)
     return t_0_array, a_array, kappa_plus
 
 def main2():
@@ -188,4 +162,4 @@ def main():
 
 
 if __name__ == '__main__':
-    t_0_array, a_array, kappa_plus = main2()
+    t_0_array, a_array, kappa_plus = main3()

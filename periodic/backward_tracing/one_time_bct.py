@@ -53,12 +53,7 @@ class OneTimeBCT:
 
         return trapz(y, b_array)
 
-    # The right hand side of the equation
-    def test_fun(self, a, kappa):
-        return 7 * (1 - kappa/10) * kappa
-
     def fun(self, a, kappa, t_0_index):
-        # print('t0:', t_0, ', a', a, ', kappa: ', kappa)
         t_0 = self.t_0_array[t_0_index]
         dkappa = - kappa * (self.mu(a) + self.sigma(a, t_0 + a) + self.p() *
                             self.integral(a, t_0_index))
@@ -69,9 +64,7 @@ class OneTimeBCT:
         kappa0 = [1]  # must be a 1-d array!
         sol = solve_ivp(self.fun, [0, a_array[-1]], kappa0, method='Radau',
                         t_eval=a_array, dense_output=True, vectorized=True,
-                        args=[t_0_index], rtol=1e-3, atol=1e-9)
-        if(sol.y.reshape(-1).any() < 0):
-            print('Oh oh')
+                        args=[t_0_index], rtol=1e-4, atol=1e-9)
         return sol
 
     def calculate_kappa_minus(self):
@@ -92,7 +85,7 @@ class OneTimeBCT:
             self.kappa_minus[t_0_index, 0: a_index + 1] = sol.y.reshape(-1)
 
         # Fix numerical errors:
-        self.kappa_minus = np.where(self.kappa_minus < 1e-10, 0, self.kappa_minus)
+        self.kappa_minus = np.where(self.kappa_minus < 0, 0, self.kappa_minus)
 
         return self.t_0_array[0:(self.t_0_length + 1)], self.a_array,\
             self.kappa_minus[0:(self.t_0_length + 1), :]

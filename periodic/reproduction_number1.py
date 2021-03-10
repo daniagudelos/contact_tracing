@@ -65,7 +65,7 @@ class ReproductionNumberCalculator:
             name = self.name_switcher.get(tracing_type)
             kappa = Exporter.load_variable(name)
         except (FileNotFoundError):
-            print('Calculating kappa')
+            print('Calculating kappa - type: ', tracing_type)
             func = self.switcher.get(tracing_type)
             kappa = func()
         return kappa
@@ -197,16 +197,30 @@ def fct_test(par, T):
     #rnc = ReproductionNumberCalculator(par, a_max=2 * T, t_0_max=2 * T,
      #                                  tracing_type=0, trunc=1)
     rnc2 = ReproductionNumberCalculator(par, a_max=2 * T, t_0_max=2 * T,
+                                        tracing_type=2, trunc=1)
+    rnc3 = ReproductionNumberCalculator(par, a_max=2 * T, t_0_max=2 * T,
                                         tracing_type=5, trunc=1)
-    #rnc3 = ReproductionNumberCalculator(par, a_max=2 * T, t_0_max=2 * T,
-     #                                   tracing_type=5, trunc=1)
-    #ew1, _ = rnc.calculateReproductionNumber()
-    #print('nct ', ew1)
+    # ew1, _ = rnc.calculateReproductionNumber()
+    # print('nct ', ew1)
     ew2, _ = rnc2.calculateReproductionNumber()
-    print('ot_fct ', ew2)
-    #ew3, _ = rnc3.calculateReproductionNumber()
-    #print('re_fct ', ew3)
-    return ew2  # ew1, ew2, ew3
+    print('ot_lct ', ew2)
+    ew3, _ = rnc3.calculateReproductionNumber()
+    print('re_fct ', ew3)
+    return ew2, ew3  # ew1, ew2, ew3
+
+def lct_test(par, T):
+    # rnc2 = ReproductionNumberCalculator(par, a_max=2 * T, t_0_max=2 * T,
+    #                                    tracing_type=3, trunc=1)
+    rnc3 = ReproductionNumberCalculator(par, a_max=T, t_0_max=2 * T,
+                                        tracing_type=6, trunc=1)
+    # ew1, _ = rnc.calculateReproductionNumber()
+    # print('nct ', ew1)
+    # ew2, _ = rnc2.calculateReproductionNumber()
+    # print('ot_lct ', ew2)
+    ew3, _ = rnc3.calculateReproductionNumber()
+    print('re_lct ', ew3)
+    return ew3  # ew1, ew2, ew3
+
 
 if __name__ == '__main__':
     beta2 = np.array([1, 1, 1, 1, 3, 3, 3, 3, 3.5, 3.5, 3.5, 3.5, 4, 4, 4, 4,
@@ -214,5 +228,6 @@ if __name__ == '__main__':
     #beta1 = np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
      #                 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
     par = TestParameters1(beta2, p=1/3, h=0.25, period_time=7)
-    ew1, ew2, ew3 = bct_test(par, 7)
-    #ew2 = fct_test(par, 7)
+    ew6 = lct_test(par, 7)
+    # ew4, ew5 = fct_test(par, 7)
+    # ew1, ew2, ew3 = bct_test(par, 7)
