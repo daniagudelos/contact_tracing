@@ -19,7 +19,6 @@ from periodic.full_tracing.recursive_lct import RecursiveLCT
 
 class ReproductionNumberCalculator:
     def __init__(self, parameters, a_max, t_0_max, tracing_type, trunc=10):
-        # tracing_type: 0: no contact tracing, 1: bct, 2: fct, 3: lct
         self.parameters = parameters
         self.h = parameters.get_h
         self.p = parameters.get_p
