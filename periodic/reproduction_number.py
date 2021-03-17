@@ -153,6 +153,7 @@ class ReproductionNumberCalculator:
         # Exporter.save_variable(beta, 'beta_it' + str(self.optimizer_iteration))
         print(beta)
         self.parameters = TestParameters1(beta)
+        self.beta = self.parameters.get_beta
         self.kappa = self.get_kappa(tracing_type)
 
         ew, ev = self.get_eigenpair()
@@ -183,9 +184,19 @@ class ReproductionNumberCalculator:
 
 def main():
     T = 7
-    beta2 = np.array([1, 1, 1, 1, 3, 3, 3, 3, 3.5, 3.5, 3.5, 3.5, 4, 4, 4, 4,
+
+    beta2 = np.array([4.03180775, 3.32875495, 5.61445947, 3.27064162,
+                        4.12945533, 3.56094193,
+                        2.34989042, 8.170785,   4.79047693, 7.93459138, 
+                        5.41256494, 6.58981984,
+                        6.46465104, 8.09681395, 6.97391276, 0.95409398,
+                        5.5625838,  2.77441899,
+                        7.63343152, 2.99323211, 6.32643309, 0.91895196,
+                        8.72991048, 8.46562939,
+                        2.53669335, 1.63826452, 1.02829687, 0.45548419])
+    beta1 = np.array([1, 1, 1, 1, 3, 3, 3, 3, 3.5, 3.5, 3.5, 3.5, 4, 4, 4, 4,
                       3, 3, 3, 3, 2, 2, 2, 2, 1, 1, 1, 1])
-    par = TestParameters1(beta2, p=1/3, h=0.25, period_time=T)
+    par = TestParameters1(beta1, p=1/3, h=0.25, period_time=T)
     rnc = ReproductionNumberCalculator(par, a_max=2 * T, t_0_max=2 * T,
                                        trunc=4)
     ew1 = rnc.calculateReproductionNumber(beta2, 0)
