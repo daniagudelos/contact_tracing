@@ -158,7 +158,7 @@ class VariableParameters(Parameters):
 
 class TestParameters1(Parameters):
     #  beta1(a) = const.,  dbeta1/da = 0
-    def __init__(self, beta2, p=0.5, h=0.05, period_time=1, beta1=1.0,
+    def __init__(self, beta2, p=1/3, h=0.25, period_time=7, beta1=1.0,
                  mu=0.3, sigma=0.5):
         self.p = p
         self.h = h
