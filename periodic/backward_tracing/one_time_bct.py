@@ -107,8 +107,8 @@ def main3():
                       3, 3, 3, 3, 2, 2, 2, 2, 1, 1, 1, 1])
     par = TestParameters1(beta2, p=1/3, h=0.25, period_time=T)
     t_0_array, a_array, kappa_minus = one_time_bct_test(
-        par, '../../figures/periodic/fct_re_variable_p03', a_max=7*T,
-        t_0_max=2*T)
+        par, '../../figures/periodic/fct_re_variable_p03', a_max=4*T,
+        t_0_max=3*T)
     return t_0_array, a_array, kappa_minus
 
 
