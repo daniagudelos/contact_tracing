@@ -78,7 +78,7 @@ class RecursiveBCT:
         a_array = self.a_array[a_start:a_end + 1]  # from 0 to a_end
         kappa0 = [self.kappa_minus[t_0_index, a_start]]  # must be a 1-d array!
         sol = solve_ivp(self.fun, [a_array[0], a_array[-1]], kappa0,
-                        method='Radau', t_eval=a_array, dense_output=True,
+                        method='LSODA', t_eval=a_array, dense_output=True,
                         vectorized=True, args=[t_0_index], rtol=1e-4,
                         atol=1e-9)
         return sol
