@@ -6,6 +6,7 @@ Created on Wed Jan 20 14:43:24 2021
 @author: saitel
 """
 import numpy as np
+import logging
 from helper.exporter import Exporter
 from parameters.parameters import TestParameters1
 from periodic.no_contact_tracing import NoCT
@@ -18,7 +19,9 @@ from periodic.full_tracing.recursive_lct import RecursiveLCT
 
 
 class ReproductionNumberCalculator:
-    def __init__(self, parameters, a_max, t_0_max, tracing_type, trunc=10):
+    def __init__(self, logger, parameters, a_max, t_0_max, trunc=2):
+        self.logger = logger
+        self.optimizer_iteration = 0
         self.parameters = parameters
         self.h = parameters.get_h
         self.p = parameters.get_p
@@ -57,7 +60,7 @@ class ReproductionNumberCalculator:
             6: 'kappa_re_lct'
         }
 
-        self.kappa = self.get_kappa(tracing_type)
+        self.kappa = None
 
     def get_kappa(self, tracing_type):
         try:
@@ -94,7 +97,7 @@ class ReproductionNumberCalculator:
         return kappa
 
     def calculate_kappa_ot_fct(self):
-        nct = OneTimeFCT(parameters=self.parameters, n_gen=4, trunc=10,
+        nct = OneTimeFCT(parameters=self.parameters, n_gen=6, trunc=10,
                          a_max=self.a_max, t_0_max=self.t_0_max)
         _, _, kappa = nct.calculate_kappa_plus()
         name = self.name_switcher.get(2)
@@ -158,22 +161,39 @@ class ReproductionNumberCalculator:
         u = self.period * F_sum * self.h()
         return u
 
-    def calculateReproductionNumber(self):
-        print('Calculating!')
-        q = np.zeros_like(self.t_0_array)
-        q[1] = 1
-        q[3] = 1
-        q = q / np.linalg.norm(q)
-        v = 0
+    def calculateReproductionNumber(self, beta, tracing_type):
+        self.beta_array = beta
+        self.parameters = TestParameters1(beta)
+        self.beta = self.parameters.get_beta
+        self.kappa = self.get_kappa(tracing_type)
+
+        ew, ev = self.get_eigenpair()
+
+        self.logger.info('Iteration %s, beta: %s', self.optimizer_iteration,
+                         np.array2string(self.beta_array))
+        self.logger.info('Iteration %s, ew: %s', self.optimizer_iteration,
+                         str(ew))
+
+        if tracing_type != 0:
+            self.optimizer_iteration += 1
+
+        return ew
+
+    def get_eigenpair(self):
+        ev = np.zeros_like(self.t_0_array)
+        ev[1] = 1
+        ev[3] = 1
+        ev = ev / np.linalg.norm(ev)
+        ew = 0
 
         error = 10
         while error > 1e-5:
-            z = self.build_vector(q)  # np.matmul(A, q)  # A  * q
-            q = z / np.linalg.norm(z)
-            Aq = self.build_vector(q)
-            v = np.transpose(q).dot(Aq)
-            error = np.linalg.norm(Aq - v * q)
-        return v, q
+            z = self.build_vector(ev)  # np.matmul(A, ev)  # A  * ev
+            ev = z / np.linalg.norm(z)
+            Aev = self.build_vector(ev)
+            ew = np.transpose(ev).dot(Aev)
+            error = np.linalg.norm(Aev - ew * ev)
+        return ew, ev
 
 
 def bct_test(par, T):
@@ -221,12 +241,31 @@ def lct_test(par, T):
     return ew3  # ew1, ew2, ew3
 
 
-if __name__ == '__main__':
-    beta2 = np.array([1, 1, 1, 1, 3, 3, 3, 3, 3.5, 3.5, 3.5, 3.5, 4, 4, 4, 4,
+def main():
+    T = 7
+
+    beta0 = np.array([1, 1, 1, 1, 3, 3, 3, 3, 3.5, 3.5, 3.5, 3.5, 4, 4, 4, 4,
                       3, 3, 3, 3, 2, 2, 2, 2, 1, 1, 1, 1])
-    #beta1 = np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-     #                 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
-    par = TestParameters1(beta2, p=1/3, h=0.25, period_time=7)
-    ew6 = lct_test(par, 7)
-    # ew4, ew5 = fct_test(par, 7)
-    # ew1, ew2, ew3 = bct_test(par, 7)
+
+    par = TestParameters1(beta0, p=1/3, h=0.25, period_time=T)
+
+    logger = logging.getLogger('rep_num_test')
+    formatter = logging.Formatter('%(asctime)s %(message)s',
+                                  '%m/%d/%Y %I:%M:%S %p')
+    fh = logging.FileHandler('/home/saitel/TUM/Thesis/Code/rep_num_test.log')
+    # fh.setLevel(logging.DEBUG)
+    fh.setFormatter(formatter)
+    logger.addHandler(fh)
+
+    rnc = ReproductionNumberCalculator(logger, par, a_max=T, t_0_max=2 * T,
+                                       trunc=2)
+    ew1 = rnc.calculateReproductionNumber(beta0, 1)
+    return ew1
+
+
+if __name__ == '__main__':
+    logging.basicConfig(level=logging.INFO,
+                        format='%(asctime)s %(message)s',
+                        datefmt='%m/%d/%Y %I:%M:%S %p')
+    ew1 = main()
+    print('ew1 ', ew1)

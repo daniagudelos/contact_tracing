@@ -65,7 +65,7 @@ class ReproductionNumberCalculator:
         self.kappa = None
 
     def get_kappa(self, tracing_type):
-        self.logger.info('Calculating kappa - type: ', tracing_type)
+        # self.logger.info('Calculating kappa - type: %s', str(tracing_type))
         func = self.switcher.get(tracing_type)
         # name = (self.name_switcher.get(tracing_type) + '_it' +
         #        str(self.optimizer_iteration))
@@ -190,15 +190,16 @@ class ReproductionNumberCalculator:
 def main():
     T = 7
 
-    beta123 = np.array([4.03180775, 3.32875495, 5.61445947, 3.27064162,
-                        4.12945533, 3.56094193,
-                        2.34989042, 8.170785,   4.79047693, 7.93459138, 
-                        5.41256494, 6.58981984,
-                        6.46465104, 8.09681395, 6.97391276, 0.95409398,
-                        5.5625838,  2.77441899,
-                        7.63343152, 2.99323211, 6.32643309, 0.91895196,
-                        8.72991048, 8.46562939,
-                        2.53669335, 1.63826452, 1.02829687, 0.45548419])
+    beta0 = np.array([9.08611232e-23, 2.68520261e-18, 1.37888902e-04,
+                      8.62416099e-01, 3.45384645e+00, 2.90048590e+00,
+                      3.10142458e+00, 2.56611650e+00, 3.69617468e+00,
+                      3.53392347e+00, 3.93938788e+00, 3.83235544e+00,
+                      4.10657378e+00, 4.12117064e+00, 3.75965060e+00,
+                      3.88962677e+00, 3.58391512e+00, 3.23374595e+00,
+                      3.55333169e+00, 3.17617161e+00, 2.17393546e+00,
+                      2.09780564e+00, 2.00315860e+00, 2.27245852e+00,
+                      9.45962165e-01, 3.93843186e-01, 1.73737956e-04,
+                      6.19287167e-04])
     beta1 = np.array([1, 1, 1, 1, 3, 3, 3, 3, 3.5, 3.5, 3.5, 3.5, 4, 4, 4, 4,
                       3, 3, 3, 3, 2, 2, 2, 2, 1, 1, 1, 1])
     par = TestParameters1(beta1, p=1/3, h=0.25, period_time=T)
@@ -213,7 +214,7 @@ def main():
 
     rnc = ReproductionNumberCalculator(logger, par, a_max=2 * T, t_0_max=2 * T,
                                        trunc=4)
-    ew1 = rnc.calculateReproductionNumber(beta123, 0)
+    ew1 = rnc.calculateReproductionNumber(beta0, 2)
     return ew1
 
 
