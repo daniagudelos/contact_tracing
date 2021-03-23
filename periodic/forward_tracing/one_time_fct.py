@@ -7,8 +7,9 @@ Created on Tue Jan 12 15:13:28 2021
 """
 from periodic.no_contact_tracing import NoCT
 from periodic.backward_tracing.one_time_bct import OneTimeBCT
-from parameters.parameters import ConstantParameters, VariableParameters, TestParameters1
+from parameters.parameters import TestParameters1
 import numpy as np
+from joblib import Parallel, delayed
 from helper.plotter import Plotter
 from helper.exporter import Exporter
 
@@ -39,8 +40,8 @@ class OneTimeFCT:
 
     def calculate_f_0(self):
         _, _, kappa_minus = self.bct.calculate_kappa_minus()
-        #kappa_minus = Exporter.load_variable('kappa_ot_bct')
-        Exporter.save_variable(kappa_minus, 'kappa_ot_bct')
+        # kappa_minus = Exporter.load_variable('kappa_ot_bct')
+        # Exporter.save_variable(kappa_minus, 'kappa_ot_bct')
         f_0 = kappa_minus / self.kappa_hat
         return f_0
 
@@ -67,6 +68,9 @@ class OneTimeFCT:
         # Calculates f_plus_infinity: after convergence
 
         self.f.append(self.calculate_f_0())
+        # One extra periods for ghost cells
+        t_0_periods = int(self.t_0_max / self.period)
+
         # Calculate first generation: sum_{b=0}^{N} sum_{a=0}^{M}
         for i in range(1, self.n_gen):  # from 1 to gen_max
 
@@ -75,15 +79,33 @@ class OneTimeFCT:
             N_length = self.a_length + (self.n_gen - i) * self.trunc_length
             f_plus = np.ones((self.t_0_length + 1, M_length + 1))
 
-            for t_0_index in range(0, self.t_0_length + 1):  # from 0 to t_0_max
-                # Calculate d for t0[t_0_index]
-                d = self.calculate_d(t_0_index, N_length)
-                for a_index in range(1, M_length + 1):  # from 1 to a_max + b_max
-                    outer = self.calculate_f_plus_point(t_0_index, a_index,
-                                                        N_length)
-                    f_plus[t_0_index, a_index] = 1 - self.p() / d * outer
+            # from 0 to period
+            f_plus[0:self.period_length + 1, 1:M_length + 1] = np.asarray(
+                Parallel(n_jobs=4)(delayed(self.calculate_f_plus_for_cohort)
+                                   (i, N_length, M_length)
+                                   for i in range(0, self.period_length + 1)))
+
+            # Copy values to the rest of the periods in t_0-axis
+            for i in range(1, t_0_periods):  # 1 : t_0_periods - 1
+                t_0_start = self.period_length * i + 1
+                t_0_end = self.period_length * (i + 1) + 1
+                f_plus[t_0_start: t_0_end, 0:M_length + 1] = (
+                    f_plus[1: self.period_length + 1, 0:M_length + 1])
+
             self.f.append(f_plus)
         return self.f[-1]
+
+    def calculate_f_plus_for_cohort(self, t_0_index, N_length, M_length):
+        f_cohort = np.zeros((M_length + 1))
+        # Calculate d for t0[t_0_index]
+        d = self.calculate_d(t_0_index, N_length)
+
+        # from 1 to a_max + b_max
+        for a_index in range(1, M_length + 1):
+            outer = self.calculate_f_plus_point(t_0_index, a_index,
+                                                N_length)
+            f_cohort[a_index] = 1 - self.p() / d * outer
+        return f_cohort[1:M_length + 1]
 
     def calculate_f_plus_point(self, t_0_index, M_length, N_length):
         # Input: index in t_0, index in a, upper bound of inner
@@ -126,39 +148,39 @@ def main3():
         t_0_max=2 * T)
     return t_0_array, a_array, kappa_plus
 
-def main2():
-    t_0_array, a_array, kappa_plus = one_time_fct_test(VariableParameters(
-        p=1/3, h=0.5), '../../figures/periodic/fct_ot_variable_p03', a_max=2,
-        t_0_max=14)
-    return t_0_array, a_array, kappa_plus
+# def main2():
+#     t_0_array, a_array, kappa_plus = one_time_fct_test(VariableParameters(
+#         p=1/3, h=0.5), '../../figures/periodic/fct_ot_variable_p03', a_max=2,
+#         t_0_max=14)
+#     return t_0_array, a_array, kappa_plus
 
 
-def main():
-    print('Running simulation FCT with constant parameters and p=0.0')
-    one_time_fct_test(ConstantParameters(p=0, h=0.5),
-                      '../../figures/non_periodic/fct_ot_constant_p0')
-    print('Running simulation FCT with constant parameters and p=1/3')
-    one_time_fct_test(ConstantParameters(p=1/3, h=0.5),
-                      '../../figures/periodic/fct_ot_constant_p03')
-    print('Running simulation FCT with constant parameters and p=2/3')
-    one_time_fct_test(ConstantParameters(p=2/3, h=0.5),
-                      '../../figures/periodic/fct_ot_constant_p06')
-    print('Running simulation FCT with constant parameters and p=1')
-    one_time_fct_test(ConstantParameters(p=1, h=0.5),
-                      '../../figures/periodic/fct_ot_constant_p1')
+# def main():
+#     print('Running simulation FCT with constant parameters and p=0.0')
+#     one_time_fct_test(ConstantParameters(p=0, h=0.5),
+#                       '../../figures/non_periodic/fct_ot_constant_p0')
+#     print('Running simulation FCT with constant parameters and p=1/3')
+#     one_time_fct_test(ConstantParameters(p=1/3, h=0.5),
+#                       '../../figures/periodic/fct_ot_constant_p03')
+#     print('Running simulation FCT with constant parameters and p=2/3')
+#     one_time_fct_test(ConstantParameters(p=2/3, h=0.5),
+#                       '../../figures/periodic/fct_ot_constant_p06')
+#     print('Running simulation FCT with constant parameters and p=1')
+#     one_time_fct_test(ConstantParameters(p=1, h=0.5),
+#                       '../../figures/periodic/fct_ot_constant_p1')
 
-    print('Running simulation FCT with variable parameters and p=0.0')
-    one_time_fct_test(VariableParameters(p=0, h=0.5),
-                      '../../figures/non_periodic/fct_ot_variable_p0')
-    print('Running simulation FCT with variable parameters and p=1/3')
-    one_time_fct_test(VariableParameters(p=1/3, h=0.5),
-                      '../../figures/periodic/fct_ot_variable_p03')
-    print('Running simulation FCT with variable parameters and p=2/3')
-    one_time_fct_test(VariableParameters(p=2/3, h=0.5),
-                      '../../figures/periodic/fct_ot_variable_p06')
-    print('Running simulation FCT with variable parameters and p=1')
-    one_time_fct_test(VariableParameters(p=1, h=0.5),
-                      '../../figures/periodic/fct_ot_variable_p1')
+#     print('Running simulation FCT with variable parameters and p=0.0')
+#     one_time_fct_test(VariableParameters(p=0, h=0.5),
+#                       '../../figures/non_periodic/fct_ot_variable_p0')
+#     print('Running simulation FCT with variable parameters and p=1/3')
+#     one_time_fct_test(VariableParameters(p=1/3, h=0.5),
+#                       '../../figures/periodic/fct_ot_variable_p03')
+#     print('Running simulation FCT with variable parameters and p=2/3')
+#     one_time_fct_test(VariableParameters(p=2/3, h=0.5),
+#                       '../../figures/periodic/fct_ot_variable_p06')
+#     print('Running simulation FCT with variable parameters and p=1')
+#     one_time_fct_test(VariableParameters(p=1, h=0.5),
+#                       '../../figures/periodic/fct_ot_variable_p1')
 
 
 if __name__ == '__main__':
