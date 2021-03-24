@@ -23,12 +23,12 @@ class RecursiveBCT:
         self.p = self.parameters.get_p
         self.h = self.parameters.get_h
 
-        self.a_max = a_max
-        self.a_length = int(round(a_max / self.h(), 1))
+        self.a_max = a_max * self.period
+        self.a_length = a_max * self.period_length
         self.a_array = np.linspace(0.0, self.a_max, self.a_length + 1)
 
-        self.t_0_max = t_0_max
-        self.t_0_length = int(round(t_0_max / self.h(), 1))
+        self.t_0_max = t_0_max * self.period
+        self.t_0_length = t_0_max * self.period_length
         self.t_0_array = np.linspace(0.0, self.t_0_max + self.a_max,
                                      self.t_0_length + self.a_length + 1)
 
@@ -85,7 +85,7 @@ class RecursiveBCT:
 
     def calculate_kappa_minus(self):
         a_periods = int(self.a_max / self.period)
-        # One extra periods for ghost cells
+        # Extra periods for ghost cells
         t_0_periods = int(self.t_0_max / self.period) + a_periods
 
         # Calculate ghost cohorts: i represents t_0 + T
@@ -142,56 +142,24 @@ def recursive_bct_test(pars, filename, a_max=2, t_0_max=6):
     otbct = RecursiveBCT(pars, a_max, t_0_max)
     t_0_array, a_array, kappa_minus = otbct.calculate_kappa_minus()
     a, t_0 = np.meshgrid(a_array, t_0_array)
-    Plotter.plot_3D(t_0, a, kappa_minus, filename + '_60_10', my=0.5)
+    mx = round(t_0_max * pars.get_period() / 10)
+    my = round(a_max * pars.get_period() / 10)
+    Plotter.plot_3D(t_0, a, kappa_minus, filename + '_60_10', mx=mx, my=my)
     Plotter.plot_3D(t_0, a, kappa_minus, filename + '_n60_10', azim=-60,
-                    my=0.5)
+                    mx=mx, my=my)
     return t_0_array, a_array, kappa_minus
 
 
-def main3():
+def main():
     T = 7  # days
     beta2 = np.array([1, 1, 1, 1, 3, 3, 3, 3, 3.5, 3.5, 3.5, 3.5, 4, 4, 4, 4,
                       3, 3, 3, 3, 2, 2, 2, 2, 1, 1, 1, 1])
     par = TestParameters1(beta2, p=1/3, h=0.25, period_time=T)
     t_0_array, a_array, kappa_plus = recursive_bct_test(
-        par, '../../figures/periodic/fct_re_variable_p03', a_max=2 * T,
-        t_0_max=3*T)
+        par, '../../figures/periodic/fct_re_variable_p03', a_max=2,
+        t_0_max=3)
     return t_0_array, a_array, kappa_plus
 
 
-# def main2():
-#     t_0_array, a_array, kappa_minus = recursive_bct_test(VariableParameters(
-#         p=1/3, h=0.1), '../../figures/periodic/bct_re_variable_p03', 2, 2)
-#     return t_0_array, a_array, kappa_minus
-
-
-# def main():
-#     print('Running simulation BCT with constant parameters and p=0.0')
-#     recursive_bct_test(ConstantParameters(p=0, h=0.5),
-#                        '../../figures/non_periodic/bct_re_constant_p0')
-#     print('Running simulation BCT with constant parameters and p=1/3')
-#     recursive_bct_test(ConstantParameters(p=1/3, h=0.5),
-#                        '../../figures/periodic/bct_re_constant_p03')
-#     print('Running simulation BCT with constant parameters and p=2/3')
-#     recursive_bct_test(ConstantParameters(p=2/3, h=0.5),
-#                        '../../figures/periodic/bct_re_constant_p06')
-#     print('Running simulation BCT with constant parameters and p=1')
-#     recursive_bct_test(ConstantParameters(p=1, h=0.5),
-#                        '../../figures/periodic/bct_re_constant_p1')
-
-#     print('Running simulation BCT with variable parameters and p=0.0')
-#     recursive_bct_test(VariableParameters(p=0, h=0.5),
-#                        '../../figures/non_periodic/bct_re_variable_p0')
-#     print('Running simulation BCT with variable parameters and p=1/3')
-#     recursive_bct_test(VariableParameters(p=1/3, h=0.5),
-#                        '../../figures/periodic/bct_re_variable_p03')
-#     print('Running simulation BCT with variable parameters and p=2/3')
-#     recursive_bct_test(VariableParameters(p=2/3, h=0.5),
-#                        '../../figures/periodic/bct_re_variable_p06')
-#     print('Running simulation BCT with variable parameters and p=1')
-#     recursive_bct_test(VariableParameters(p=1, h=0.5),
-#                        '../../figures/periodic/bct_re_variable_p1')
-
-
 if __name__ == '__main__':
-    t_0_array, a_array, kappa_minus = main3()
+    t_0_array, a_array, kappa_minus = main()

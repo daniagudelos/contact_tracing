@@ -15,6 +15,9 @@ from helper.exporter import Exporter
 
 class NoCT():
     def __init__(self, parameters, a_max, t_0_max):
+        self.period = parameters.get_period()  # Period in days
+        self.period_length = parameters.get_period_length()
+        self.parameters = parameters
         self.beta = parameters.get_beta
         self.mu = parameters.get_mu
         self.sigma = parameters.get_sigma
@@ -22,10 +25,10 @@ class NoCT():
         self.h = parameters.get_h
         self.calculated = False
         self.d_calculated = False
-        self.a_max = a_max
-        self.t_0_max = t_0_max
-        self.t_0_length = int(round(t_0_max / self.h(), 1))
-        self.a_length = int(round(a_max / self.h(), 1))
+        self.a_max = a_max * self.period
+        self.t_0_max = t_0_max * self.period
+        self.t_0_length = t_0_max * self.period_length
+        self.a_length = a_max * self.period_length
         self.t_0_array = np.linspace(0.0, self.t_0_max, self.t_0_length + 1)
         self.a_array = np.linspace(0.0, self.a_max, self.a_length + 1)
         self.kappa_hat = np.zeros((self.t_0_length + 1, self.a_length + 1))
@@ -83,45 +86,15 @@ def nct_test(pars, filename, a_max=2, t_0_max=6):
     Plotter.plot_3D(t_0, a, kappa_hat, filename + '_60_10', my=0.5)
     Plotter.plot_3D(t_0, a, kappa_hat, filename + '_n60_10', azim=-60,
                     my=0.5)
-    # Save data
-    Exporter.save(t_0_array, a_array, kappa_hat, filename)
     return t_0, a, kappa_hat
 
 
-def main2():
+def main():
     t_0_array, a_array, kappa_hat = nct_test(
-        VariableParameters(p=1/3, h=0.5),
-        '../figures/non_periodic/NCT_variable_p03', 12, 2)
+        VariableParameters(p=1/3, h=0.25),
+        '../figures/non_periodic/NCT_variable_p03', 2, 2)
     return t_0_array, a_array, kappa_hat
 
 
-def main():
-    print('Running simulation NCT with constant parameters and p=0.0')
-    nct_test(ConstantParameters(p=0, h=0.5),
-             '../figures/non_periodic/NCT_constant_p0')
-    print('Running simulation NCT with constant parameters and p=1/3')
-    nct_test(ConstantParameters(p=1/3, h=0.5),
-             '../figures/non_periodic/NCT_constant_p03')
-    print('Running simulation NCT with constant parameters and p=2/3')
-    nct_test(ConstantParameters(p=2/3, h=0.5),
-             '../figures/non_periodic/NCT_constant_p06')
-    print('Running simulation NCT with constant parameters and p=1')
-    nct_test(ConstantParameters(p=1, h=0.5),
-             '../figures/non_periodic/NCT_constant_p1')
-
-    print('Running simulation NCT with variable parameters and p=0.0')
-    nct_test(VariableParameters(p=0, h=0.5),
-             '../figures/non_periodic/NCT_variable_p0')
-    print('Running simulation NCT with variable parameters and p=1/3')
-    nct_test(VariableParameters(p=1/3, h=0.5),
-             '../figures/non_periodic/NCT_variable_p03')
-    print('Running simulation NCT with variable parameters and p=2/3')
-    nct_test(VariableParameters(p=2/3, h=0.5),
-             '../figures/non_periodic/NCT_variable_p06')
-    print('Running simulation NCT with variable parameters and p=1')
-    nct_test(VariableParameters(p=1, h=0.5),
-             '../figures/non_periodic/NCT_variable_p1')
-
-
 if __name__ == '__main__':
-    _, _, kappa_hat = main2()
+    _, _, kappa_hat = main()
