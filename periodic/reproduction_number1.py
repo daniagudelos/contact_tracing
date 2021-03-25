@@ -20,23 +20,43 @@ from periodic.full_tracing.recursive_lct import RecursiveLCT
 
 class ReproductionNumberCalculator:
     def __init__(self, logger, parameters, a_max, t_0_max, trunc=2):
+        """
+        Parameters
+        ----------
+        logger : Logger
+            a logger.
+        parameters : Parameters
+            Initial parameters. beta2 is replaced later.
+        a_max : INTEGER
+            Number of a periods to calculate.
+        t_0_max : INTEGER
+            Number of t_0 periods to calculate
+        trunc : INTEGER, optional
+            Number of extra periods to approximate infinity. The default is 4.
+
+        Returns
+        -------
+        None.
+
+        """
         self.logger = logger
         self.optimizer_iteration = 0
         self.parameters = parameters
-        self.h = parameters.get_h
-        self.p = parameters.get_p
-        self.period = parameters.get_period()
-        self.period_length = parameters.get_period_length()
-        self.beta = parameters.get_beta
+        self.h = self.parameters.get_h()
+        self.p = self.parameters.get_p()
+        self.period = self.parameters.get_period()
+        self.period_length = self.parameters.get_period_length()
+        self.beta = self.parameters.get_beta
+        self.beta_array = None
+        # Number of extra periods to approximate infinity
         self.trunc = trunc
-        self.trunc_length = int(round(self.trunc / self.h(), 1))
-        self.a_max = a_max + (self.trunc + 2) * self.period
-        self.a_length = int(round(self.a_max / self.h(), 1))
-        self.t_0_max = t_0_max
-        self.t_0_length = int(round(self.t_0_max / self.h(), 1))
+        self.a_max = (a_max + self.trunc) * self.period
+        self.a_length = int(round(self.a_max / self.h, 1))
+        self.t_0_max = t_0_max * self.period
+        self.t_0_length = int(round(self.t_0_max / self.h, 1))
         self.t_0_array = np.linspace(0.0, self.t_0_max, self.t_0_length + 1)
         self.t_array = np.linspace(0.0, self.t_0_max, self.t_0_length + 1)
-        self.t_length = int(round(self.t_0_max / self.h(), 1))
+        self.t_length = int(round(self.t_0_max / self.h, 1))
         self.a_array = np.linspace(0.0, self.a_max,
                                    self.a_length + 1)
 
@@ -133,32 +153,39 @@ class ReproductionNumberCalculator:
         F_sum = np.zeros(self.period_length + 1)
         for i in range(0, self.period_length + 1):
             F = np.zeros(self.period_length + 1)
-            for j in range(0, max(0, i - 2)):  # from 0 to i-1
+
+            # First part: from 0 to t (from 0 to i-1)
+            for j in range(0, max(0, i - 2)):
                 H_sum = 0
-                H = np.zeros((self.trunc + 1))
-                index = i - j  # This is always +
+                temp = np.zeros((self.trunc + 1))
+                a_index = i - j  # This is always +
+
+                # sums from 0 to an infinite number of periods
                 for n in range(0, self.trunc + 1):
-                    H[n] = (self.beta(self.a_array[index] + n * self.period,
-                                      self.t_array[i]) *
-                            self.kappa[i, index + n * self.period_length])
-                H_sum = np.sum(H)
+                    temp[n] = (self.beta(self.a_array[a_index] +
+                                         n * self.period,
+                                         self.t_array[i]) *
+                               self.kappa[i, a_index + n * self.period_length])
+                H_sum = np.sum(temp)
                 F[j] = H_sum * w[j]
 
-            #  Second part
-            for j in range(max(0, i - 1), self.period_length + 1):  # from i-1 to N-1
+            #  Second part: from t to T (from i-1 to N-1)
+            for j in range(max(0, i - 1), self.period_length + 1):
                 H_sum = 0
-                H = np.zeros((self.trunc + 1))
+                temp = np.zeros((self.trunc + 1))
                 index = i - j
                 while(index < 0):
                     index = index + self.period_length
                 for n in range(0, self.trunc + 1):
-                    H[n] = (self.beta(self.a_array[index] +
-                                      (n + 1) * self.period, self.t_array[i]) *
-                            self.kappa[i, index + (n + 1) * self.period_length])
-                H_sum = np.sum(H)
+                    temp[n] = (self.beta(self.a_array[index] +
+                                         (n + 1) * self.period,
+                                         self.t_array[i]) *
+                               self.kappa[i, index +
+                                          (n + 1) * self.period_length])
+                H_sum = np.sum(temp)
                 F[j] = H_sum * w[j]
             F_sum[i] = np.sum(F)
-        u = self.period * F_sum * self.h()
+        u = self.period * F_sum * self.h
         return u
 
     def calculateReproductionNumber(self, beta, tracing_type):
@@ -244,8 +271,11 @@ def lct_test(par, T):
 def main():
     T = 7
 
-    beta0 = np.array([1, 1, 1, 1, 3, 3, 3, 3, 3.5, 3.5, 3.5, 3.5, 4, 4, 4, 4,
-                      3, 3, 3, 3, 2, 2, 2, 2, 1, 1, 1, 1])
+    # beta0 = np.array([1, 1, 1, 1, 3, 3, 3, 3, 3.5, 3.5, 3.5, 3.5, 4, 4, 4, 4,
+    #                  3, 3, 3, 3, 2, 2, 2, 2, 1, 1, 1, 1])
+
+    beta0 = np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                      1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
 
     par = TestParameters1(beta0, p=1/3, h=0.25, period_time=T)
 
@@ -257,9 +287,9 @@ def main():
     fh.setFormatter(formatter)
     logger.addHandler(fh)
 
-    rnc = ReproductionNumberCalculator(logger, par, a_max=T, t_0_max=2 * T,
-                                       trunc=2)
-    ew1 = rnc.calculateReproductionNumber(beta0, 1)
+    rnc = ReproductionNumberCalculator(logger, par, a_max=2, t_0_max=2,
+                                       trunc=0)
+    ew1 = rnc.calculateReproductionNumber(beta0, 2)
     return ew1
 
 
@@ -268,4 +298,3 @@ if __name__ == '__main__':
                         format='%(asctime)s %(message)s',
                         datefmt='%m/%d/%Y %I:%M:%S %p')
     ew1 = main()
-    print('ew1 ', ew1)

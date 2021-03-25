@@ -9,7 +9,7 @@ from periodic.no_contact_tracing import NoCT
 from periodic.backward_tracing.one_time_bct import OneTimeBCT
 from parameters.parameters import TestParameters1
 import numpy as np
-from math import ceil
+from timeit import default_timer as timer
 from scipy.integrate import simps as simpson
 from scipy import optimize
 from joblib import Parallel, delayed
@@ -52,9 +52,9 @@ class OneTimeFCT:
         self.f = []
 
     def calculate_f_0(self):
-        # _, _, kappa_minus = self.bct.calculate_kappa_minus()
-        kappa_minus = Exporter.load_variable('kappa_ot_bct')
-        # Exporter.save_variable(kappa_minus, 'kappa_ot_bct')
+        _, _, kappa_minus = self.bct.calculate_kappa_minus()
+        # kappa_minus = Exporter.load_variable('kappa_ot_bct')
+        Exporter.save_variable(kappa_minus, 'kappa_ot_bct')
         f_0 = kappa_minus / self.kappa_hat
         return f_0
 
@@ -81,7 +81,8 @@ class OneTimeFCT:
         f_old = self.calculate_f_0()
         # Exporter.save_variable(f_old, 'f' + str(self.it))
         self.f.append(f_old)
-        f_plus = optimize.fixed_point(self.calculate_f, f_old, xtol=1e-03)
+        f_plus = optimize.fixed_point(self.calculate_f, f_old, xtol=1e-02,
+                                      maxiter=self.n_gen)
         return f_plus
 
     def calculate_f(self, f_old):
@@ -118,35 +119,37 @@ class OneTimeFCT:
         # from 1 to a_max + b_max
         for a_index in range(1, self.inf_length + 1):
             # integral
-            temp = np.zeros((self.inf_length + 1))
+            temp1 = np.zeros((self.inf_length + 1))
+            temp2 = np.zeros((self.inf_length + 1))
 
             # From 0 to a
-            for b_index in range(0, a_index + 1):
+            for b_index in range(0, a_index):
                 index = (t_0_index - b_index) % self.period_length
-                temp[b_index] = (self.beta_integral(b_index,
-                                                    t_0_index) *
-                                 self.kappa_hat[index, b_index] *
-                                 f_old[index, b_index] *
-                                 self.sigma(self.a_array[b_index],
-                                            self.t_0_array[t_0_index]))
-            # integral1 = simpson(temp[0: a_index + 1])
-            # print('integral [0,a] = ', integral1)
+                temp1[b_index] = (self.beta_integral(b_index, t_0_index) *
+                                  self.kappa_hat[index, b_index] *
+                                  f_old[index, b_index] *
+                                  self.sigma(self.a_array[b_index],
+                                             self.t_0_array[t_0_index]))
+
             # From a to infity
-            for b_index in range(a_index + 1, self.inf_length + 1):
+            for b_index in range(a_index, self.inf_length + 1):
                 index = (t_0_index - b_index) % self.period_length
-                temp[b_index] = ((self.beta_integral(b_index, t_0_index) -
+                index2 = (t_0_index - b_index + a_index) % self.period_length
+                temp2[b_index] = (self.beta_integral(b_index, t_0_index) *
+                                  self.kappa_hat[index, b_index] *
+                                  f_old[index, b_index] *
+                                  self.sigma(self.a_array[b_index],
+                                             self.t_0_array[t_0_index]) -
                                   self.beta_integral(b_index - a_index,
-                                                     t_0_index)) *
-                                 self.kappa_hat[index, b_index] *
-                                 f_old[index, b_index] *
-                                 self.sigma(self.a_array[b_index],
-                                            self.t_0_array[t_0_index]))
-            # integral2 = simpson(temp[a_index + 1: self.inf_length + 1])
-            # print('integral [a, inf] = ', integral2)
-            # print('sum ', integral1 + integral2)
+                                                     t_0_index) *
+                                  self.kappa_hat[index2, b_index] *
+                                  f_old[index2, b_index] *
+                                  self.sigma(self.a_array[b_index],
+                                             self.t_0_array[t_0_index]
+                                             + self.a_array[a_index]))
 
             # final f
-            removal = self.p() / d * simpson(temp)
+            removal = self.p() / d * simpson(temp2 + temp1)
             f_cohort[a_index] = 1 - removal
         return f_cohort
 
@@ -162,17 +165,11 @@ class OneTimeFCT:
         for i in range(start, end + 1):
             beta[j] = self.beta(self.a_array[i], self.t_0_array[t_0_index])
             j += 1
-        # else:
-        #     beta = np.zeros_like(self.a_array[start_index:a_index + 1])
-        #     for i in range(start_index, a_index + 1):
-        #         beta[i - start_index] = self.beta(self.a_array[start_index] -
-        #                                           self.a_array[i],
-        #                                           self.t_0_array[t_0_index])
         return np.trapz(beta)
 
 
 def one_time_fct_test(pars, filename, a_max=2, t_0_max=6):
-    otfct = OneTimeFCT(pars, n_gen=5, a_max=a_max, t_0_max=t_0_max, trunc=10)
+    otfct = OneTimeFCT(pars, n_gen=5, a_max=a_max, t_0_max=t_0_max, trunc=3)
     t_0_array, a_array, kappa_plus = otfct.calculate_kappa_plus()
     a, t_0 = np.meshgrid(a_array, t_0_array)
     Plotter.plot_3D(t_0, a, kappa_plus, filename + '_60_10', my=0.5)
