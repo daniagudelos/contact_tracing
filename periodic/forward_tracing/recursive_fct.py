@@ -18,7 +18,7 @@ from helper.exporter import Exporter
 
 
 class RecursiveFCT:
-    def __init__(self, parameters, n_gen, trunc, a_max, t_0_max):
+    def __init__(self, parameters, n_gen, a_max, t_0_max, trunc=2):
         self.period = parameters.get_period()  # Period in days
         self.period_length = parameters.get_period_length()
         self.parameters = parameters
@@ -34,7 +34,7 @@ class RecursiveFCT:
         self.t_0_max = t_0_max * self.period
         self.t_0_length = t_0_max * self.period_length
         # Number of periods to approximate infinity
-        self.trunc = max(a_max, 5, trunc)
+        self.trunc = max(a_max, trunc)
         self.inf_length = self.trunc * self.period_length
 
         self.nct = NoCT(parameters, self.trunc, t_0_max)
@@ -52,12 +52,10 @@ class RecursiveFCT:
         self.f = []
 
     def calculate_f_0(self):
-        # _, _, kappa_minus = self.bct.calculate_kappa_minus()
-        # Exporter.save_variable(kappa_minus, 'kappa_re_bct')
-        kappa_minus = Exporter.load_variable('kappa_re_bct')
+        _, _, kappa_minus = self.bct.calculate_kappa_minus()
+        Exporter.save_variable(kappa_minus, 'kappa_re_bct')
+        # kappa_minus = Exporter.load_variable('kappa_re_bct')
         f_0 = kappa_minus / self.kappa_hat
-        # Exporter.save_variable(f_0, 'f_0_fct')
-        # f_0 = Exporter.load_variable('f_0_fct')
         return f_0
 
     def calculate_kappa_plus(self):
@@ -65,7 +63,7 @@ class RecursiveFCT:
             Returns an array with kappa_plus
         """
         kappa_hat = self.kappa_hat[:, 0:(self.a_length + 1)]
-        f_plus = self.calculate_f_plus()
+        f_plus = self.calculate_f_plus()[:, 0:(self.a_length + 1)]
         return (self.t_0_array, self.a_array[0:(self.a_length + 1)],
                 kappa_hat * f_plus)
 
@@ -81,9 +79,9 @@ class RecursiveFCT:
 
     def calculate_f_plus(self):
         f_old = self.calculate_f_0()
-        # Exporter.save_variable(f_old, 'f' + str(self.it))
         self.f.append(f_old)
-        f_plus = optimize.fixed_point(self.calculate_f, f_old, xtol=1e-03)
+        f_plus = optimize.fixed_point(func=self.calculate_f, x0=f_old,
+                                      xtol=1e-02, method='del2')
         return f_plus
 
     def calculate_f(self, f_old):
@@ -126,30 +124,40 @@ class RecursiveFCT:
             # From 0 to a
             for b_index in range(0, a_index):
                 index = (t_0_index - b_index) % self.period_length
-                temp1[b_index] = (self.beta_integral(b_index, t_0_index) *
+                temp1[b_index] = (-self.beta_integral(b_index, t_0_index) *
                                   self.kappa_hat[index, b_index] *
                                   f_old[index, b_index] *
-                                  self.mu(self.a_array[b_index]))
+                                  self.mu(self.a_array[b_index]) +
+                                  # d(t_0)
+                                  self.beta(self.a_array[b_index],
+                                            self.t_0_array[t_0_index]) *
+                                  self.kappa_hat[index, b_index] *
+                                  f_old[index, b_index])
 
             # From a to infity
-            for b_index in range(a_index, self.inf_length + 1):
+            for b_index in range(a_index + 1, self.inf_length + 1):
                 index = (t_0_index - b_index) % self.period_length
                 index2 = (t_0_index - b_index + a_index) % self.period_length
                 temp2[b_index] = (self.kappa_hat[index2, b_index] *
                                   f_old[index2, b_index] * (
-                                  self.beta(self.a_array[b_index - a_index],
-                                            self.t_0_array[t_0_index]) -
                                   self.beta_integral(b_index - a_index,
                                                      t_0_index) *
-                                  self.mu(self.a_array[b_index])) +
+                                  self.mu(self.a_array[b_index]) -
+                                  self.beta(self.a_array[b_index - a_index],
+                                            self.t_0_array[t_0_index])) -
                                   self.beta_integral(b_index, t_0_index) *
                                   self.kappa_hat[index, b_index] *
                                   f_old[index, b_index] *
-                                  self.mu(self.a_array[b_index]))
+                                  self.mu(self.a_array[b_index]) +
+                                  # d(t_0)
+                                  self.beta(self.a_array[b_index],
+                                            self.t_0_array[t_0_index]) *
+                                  self.kappa_hat[index, b_index] *
+                                  f_old[index, b_index])
 
             # final f
-            removal = self.p() / d * simpson(temp2 + temp1)
-            f_cohort[a_index] = 1 - self.p() - removal
+            removal = self.p() / d * (simpson(temp2 + temp1))
+            f_cohort[a_index] = 1 - removal
         return f_cohort
 
     def beta_integral(self, a_index, t_0_index):
@@ -168,22 +176,23 @@ class RecursiveFCT:
 
 
 def recursive_fct_test(pars, filename, a_max=2, t_0_max=6):
-    refct = RecursiveFCT(pars, n_gen=5, a_max=a_max, t_0_max=t_0_max,
-                         trunc=10)
+    refct = RecursiveFCT(pars, n_gen=5, a_max=a_max, t_0_max=t_0_max)
     t_0_array, a_array, kappa_plus = refct.calculate_kappa_plus()
     a, t_0 = np.meshgrid(a_array, t_0_array)
-    Plotter.plot_3D(t_0, a, kappa_plus, filename + '_60_10', my=0.5)
+    mx = round(t_0_max * pars.get_period() / 10)
+    my = round(a_max * pars.get_period() / 10)
+    Plotter.plot_3D(t_0, a, kappa_plus, filename + '_60_10', mx=mx, my=my)
     Plotter.plot_3D(t_0, a, kappa_plus, filename + '_n60_10', azim=-60,
-                    my=0.5)
+                    mx=mx, my=my)
     return t_0_array, a_array, kappa_plus
 
 
 def main():
     T = 7  # days
-    beta2 = np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-                      1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
-    # beta2 = np.array([1, 1, 1, 1, 3, 3, 3, 3, 3.5, 3.5, 3.5, 3.5, 4, 4, 4, 4,
-    #                  3, 3, 3, 3, 2, 2, 2, 2, 1, 1, 1, 1])
+    # beta2 = np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    #                  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
+    beta2 = np.array([1, 1, 1, 1, 3, 3, 3, 3, 3.5, 3.5, 3.5, 3.5, 4, 4, 4, 4,
+                      3, 3, 3, 3, 2, 2, 2, 2, 1, 1, 1, 1])
     par = TestParameters1(beta2, p=1/3, h=0.25, period_time=T)
     t_0_array, a_array, kappa_plus = recursive_fct_test(
         par, '../../figures/periodic/fct_re_variable_p03', a_max=2,

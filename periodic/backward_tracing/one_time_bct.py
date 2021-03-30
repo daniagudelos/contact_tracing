@@ -5,7 +5,8 @@ Created on Mon Feb  8 08:47:09 2021
 
 @author: saitel
 """
-from scipy.integrate import trapz, solve_ivp
+from scipy.integrate import solve_ivp
+from scipy.integrate import simps as simpson
 from parameters.parameters import TestParameters1
 import numpy as np
 from helper.plotter import Plotter
@@ -57,7 +58,7 @@ class OneTimeBCT:
         for i in range(0, len(b_array)):  # from 0 to a_upper
             y[i] = self.integrand(i, t_0_index, a_index)
 
-        return trapz(y, b_array)
+        return simpson(y, b_array)
 
     def fun(self, a, kappa, t_0_index):
         t_0 = self.t_0_array[t_0_index]
@@ -70,7 +71,7 @@ class OneTimeBCT:
         kappa0 = [self.kappa_minus[t_0_index, a_start]]  # must be a 1-d array!
         sol = solve_ivp(self.fun, [a_array[0], a_array[-1]], kappa0,
                         method='LSODA', t_eval=a_array, dense_output=True,
-                        vectorized=True, args=[t_0_index], rtol=1e-4,
+                        vectorized=True, args=[t_0_index], rtol=1e-6,
                         atol=1e-9)
         return sol
 
@@ -147,11 +148,11 @@ def main():
     beta2 = np.array([1, 1, 1, 1, 3, 3, 3, 3, 3.5, 3.5, 3.5, 3.5, 4, 4, 4, 4,
                       3, 3, 3, 3, 2, 2, 2, 2, 1, 1, 1, 1])
     par = TestParameters1(beta2, p=1/3, h=0.25, period_time=T)
-    t_0_array, a_array, kappa_minus = one_time_bct_test(
+    t_0_array, a_array, kappa_ot_bct = one_time_bct_test(
         par, '../../figures/periodic/fct_re_variable_p03', a_max=4,
         t_0_max=3)
-    return t_0_array, a_array, kappa_minus
+    return t_0_array, a_array, kappa_ot_bct
 
 
 if __name__ == '__main__':
-    t_0_array, a_array, kappa_minus = main()
+    t_0_array, a_array, kappa_ot_bct = main()

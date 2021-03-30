@@ -19,8 +19,26 @@ from periodic.full_tracing.recursive_lct import RecursiveLCT
 
 
 class ReproductionNumberCalculator:
-    def __init__(self, logger, parameters, a_max, t_0_max, trunc=2):
-        # Initial parameters. They are replaced later.
+    def __init__(self, logger, parameters, a_max, t_0_max, trunc=4):
+        """
+        Parameters
+        ----------
+        logger : Logger
+            a logger.
+        parameters : Parameters
+            Initial parameters. beta2 is replaced later.
+        a_max : INTEGER
+            Number of a periods to calculate.
+        t_0_max : INTEGER
+            Number of t_0 periods to calculate
+        trunc : INTEGER, optional
+            Number of extra periods to approximate infinity. The default is 4.
+
+        Returns
+        -------
+        None.
+
+        """
         self.logger = logger
         self.optimizer_iteration = 0
         self.parameters = parameters
@@ -30,11 +48,11 @@ class ReproductionNumberCalculator:
         self.period_length = self.parameters.get_period_length()
         self.beta = self.parameters.get_beta
         self.beta_array = None
+        # Number of extra periods to approximate infinity
         self.trunc = trunc
-        self.trunc_length = int(round(self.trunc / self.h, 1))
-        self.a_max = a_max + (self.trunc + 2) * self.period
+        self.a_max = (a_max + self.trunc) * self.period
         self.a_length = int(round(self.a_max / self.h, 1))
-        self.t_0_max = t_0_max
+        self.t_0_max = t_0_max * self.period
         self.t_0_length = int(round(self.t_0_max / self.h, 1))
         self.t_0_array = np.linspace(0.0, self.t_0_max, self.t_0_length + 1)
         self.t_array = np.linspace(0.0, self.t_0_max, self.t_0_length + 1)
@@ -100,7 +118,7 @@ class ReproductionNumberCalculator:
         return kappa
 
     def calculate_kappa_re_fct(self):
-        nct = RecursiveFCT(parameters=self.parameters, n_gen=4, trunc=10,
+        nct = RecursiveFCT(parameters=self.parameters, n_gen=4, trunc=0,
                            a_max=self.a_max, t_0_max=self.t_0_max)
         _, _, kappa = nct.calculate_kappa_plus()
         return kappa
@@ -112,41 +130,46 @@ class ReproductionNumberCalculator:
         return kappa
 
     def calculate_kappa_re_lct(self):
-        nct = RecursiveLCT(parameters=self.parameters, n_gen=4, trunc=10,
+        nct = RecursiveLCT(parameters=self.parameters, n_gen=4, trunc=0,
                            a_max=self.a_max, t_0_max=self.t_0_max)
         _, _, kappa = nct.calculate_kappa()
         return kappa
 
     def build_vector(self, w):
+
         F_sum = np.zeros(self.period_length + 1)
         for i in range(0, self.period_length + 1):
             F = np.zeros(self.period_length + 1)
 
-            # First sum: from 0 to i-1
+            # First part: from 0 to t (from 0 to i-1)
             for j in range(0, max(0, i - 2)):
                 H_sum = 0
-                H = np.zeros((self.trunc + 1))
-                index = i - j  # This is always +
+                temp = np.zeros((self.trunc + 1))
+                a_index = i - j  # This is always +
+
+                # sums from 0 to an infinite number of periods
                 for n in range(0, self.trunc + 1):
-                    H[n] = (self.beta(self.a_array[index] + n * self.period,
-                                      self.t_array[i]) *
-                            self.kappa[i, index + n * self.period_length])
-                H_sum = np.sum(H)
+                    temp[n] = (self.beta(self.a_array[a_index] +
+                                         n * self.period,
+                                         self.t_array[i]) *
+                               self.kappa[i, a_index + n * self.period_length])
+                H_sum = np.sum(temp)
                 F[j] = H_sum * w[j]
 
-            #  Second sum: from i-1 to N-1
+            #  Second part: from t to T (from i-1 to N-1)
             for j in range(max(0, i - 1), self.period_length + 1):
                 H_sum = 0
-                H = np.zeros((self.trunc + 1))
+                temp = np.zeros((self.trunc + 1))
                 index = i - j
                 while(index < 0):
                     index = index + self.period_length
                 for n in range(0, self.trunc + 1):
-                    H[n] = (self.beta(self.a_array[index] +
-                                      (n + 1) * self.period, self.t_array[i]) *
-                            self.kappa[i,
-                                       index + (n + 1) * self.period_length])
-                H_sum = np.sum(H)
+                    temp[n] = (self.beta(self.a_array[index] +
+                                         (n + 1) * self.period,
+                                         self.t_array[i]) *
+                               self.kappa[i, index +
+                                          (n + 1) * self.period_length])
+                H_sum = np.sum(temp)
                 F[j] = H_sum * w[j]
             F_sum[i] = np.sum(F)
         u = self.period * F_sum * self.h
@@ -212,8 +235,7 @@ def main():
     fh.setFormatter(formatter)
     logger.addHandler(fh)
 
-    rnc = ReproductionNumberCalculator(logger, par, a_max=2 * T, t_0_max=2 * T,
-                                       trunc=4)
+    rnc = ReproductionNumberCalculator(logger, par, a_max=2, t_0_max=2)
     ew1 = rnc.calculateReproductionNumber(beta0, 2)
     return ew1
 

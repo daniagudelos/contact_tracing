@@ -5,7 +5,8 @@ Created on Wed Nov 25 23:54:35 2020
 
 @author: saitel
 """
-from scipy.integrate import trapz, solve_ivp
+from scipy.integrate import solve_ivp
+from scipy.integrate import simps as simpson
 from parameters.parameters import TestParameters1
 import numpy as np
 from helper.plotter import Plotter
@@ -62,7 +63,7 @@ class RecursiveBCT:
         for i in range(0, len(b_array)):  # from 0 to a_upper
             y[i] = self.integrand(i, t_0_index, a_index)
 
-        return trapz(y, b_array)
+        return simpson(y, b_array)
 
     def fun(self, a, kappa_minus, t_0_index):
         dkappa_minus = (- kappa_minus *

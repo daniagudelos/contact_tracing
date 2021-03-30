@@ -32,7 +32,7 @@ class ReproductionNumberCalculator:
         t_0_max : INTEGER
             Number of t_0 periods to calculate
         trunc : INTEGER, optional
-            Number of extra periods to approximate infinity. The default is 4.
+            Number of extra periods to approximate infinity.
 
         Returns
         -------
@@ -50,14 +50,15 @@ class ReproductionNumberCalculator:
         self.beta_array = None
         # Number of extra periods to approximate infinity
         self.trunc = trunc
-        self.a_max = (a_max + self.trunc) * self.period
-        self.a_length = int(round(self.a_max / self.h, 1))
-        self.t_0_max = t_0_max * self.period
-        self.t_0_length = int(round(self.t_0_max / self.h, 1))
-        self.t_0_array = np.linspace(0.0, self.t_0_max, self.t_0_length + 1)
-        self.t_array = np.linspace(0.0, self.t_0_max, self.t_0_length + 1)
-        self.t_length = int(round(self.t_0_max / self.h, 1))
-        self.a_array = np.linspace(0.0, self.a_max,
+        self.a_max = a_max + self.trunc
+        self.a_length = self.a_max * self.period_length
+        self.t_0_max = t_0_max
+        self.t_0_length = self.t_0_max * self.period_length
+        self.t_0_array = np.linspace(0.0, self.t_0_max * self.period_length,
+                                     self.t_0_length + 1)
+        self.t_array = np.array(self.t_0_array)
+        self.t_length = self.t_0_max * self.period_length
+        self.a_array = np.linspace(0.0, self.a_max * self.period_length,
                                    self.a_length + 1)
 
         self.switcher = {
@@ -117,7 +118,7 @@ class ReproductionNumberCalculator:
         return kappa
 
     def calculate_kappa_ot_fct(self):
-        nct = OneTimeFCT(parameters=self.parameters, n_gen=6, trunc=10,
+        nct = OneTimeFCT(parameters=self.parameters, n_gen=3, trunc=3,
                          a_max=self.a_max, t_0_max=self.t_0_max)
         _, _, kappa = nct.calculate_kappa_plus()
         name = self.name_switcher.get(2)
@@ -125,7 +126,7 @@ class ReproductionNumberCalculator:
         return kappa
 
     def calculate_kappa_re_fct(self):
-        nct = RecursiveFCT(parameters=self.parameters, n_gen=4, trunc=10,
+        nct = RecursiveFCT(parameters=self.parameters, n_gen=3, trunc=3,
                            a_max=self.a_max, t_0_max=self.t_0_max)
         _, _, kappa = nct.calculate_kappa_plus()
         name = self.name_switcher.get(5)
@@ -133,7 +134,7 @@ class ReproductionNumberCalculator:
         return kappa
 
     def calculate_kappa_ot_lct(self):
-        nct = OneTimeLCT(parameters=self.parameters, n_gen=4, trunc=10,
+        nct = OneTimeLCT(parameters=self.parameters, n_gen=3, trunc=3,
                          a_max=self.a_max, t_0_max=self.t_0_max)
         _, _, kappa = nct.calculate_kappa()
         name = self.name_switcher.get(3)
@@ -141,7 +142,7 @@ class ReproductionNumberCalculator:
         return kappa
 
     def calculate_kappa_re_lct(self):
-        nct = RecursiveLCT(parameters=self.parameters, n_gen=4, trunc=10,
+        nct = RecursiveLCT(parameters=self.parameters, n_gen=3, trunc=3,
                            a_max=self.a_max, t_0_max=self.t_0_max)
         _, _, kappa = nct.calculate_kappa()
         name = self.name_switcher.get(6)
@@ -271,11 +272,11 @@ def lct_test(par, T):
 def main():
     T = 7
 
-    # beta0 = np.array([1, 1, 1, 1, 3, 3, 3, 3, 3.5, 3.5, 3.5, 3.5, 4, 4, 4, 4,
-    #                  3, 3, 3, 3, 2, 2, 2, 2, 1, 1, 1, 1])
+    beta0 = np.array([1, 1, 1, 1, 3, 3, 3, 3, 3.5, 3.5, 3.5, 3.5, 4, 4, 4, 4,
+                      3, 3, 3, 3, 2, 2, 2, 2, 1, 1, 1, 1])
 
-    beta0 = np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-                      1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
+    # beta0 = np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    #                  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
 
     par = TestParameters1(beta0, p=1/3, h=0.25, period_time=T)
 
@@ -289,7 +290,7 @@ def main():
 
     rnc = ReproductionNumberCalculator(logger, par, a_max=2, t_0_max=2,
                                        trunc=0)
-    ew1 = rnc.calculateReproductionNumber(beta0, 2)
+    ew1 = rnc.calculateReproductionNumber(beta0, 0)
     return ew1
 
 
