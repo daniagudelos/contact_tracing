@@ -79,8 +79,8 @@ class RecursiveBCT:
         a_array = self.a_array[a_start:a_end + 1]  # from 0 to a_end
         kappa0 = [self.kappa_minus[t_0_index, a_start]]  # must be a 1-d array!
         sol = solve_ivp(self.fun, [a_array[0], a_array[-1]], kappa0,
-                        method='LSODA', t_eval=a_array, dense_output=True,
-                        vectorized=True, args=[t_0_index], rtol=1e-4,
+                        method='Radau', t_eval=a_array, dense_output=True,
+                        vectorized=True, args=[t_0_index], rtol=1e-6,
                         atol=1e-9)
         return sol
 
@@ -143,6 +143,7 @@ def recursive_bct_test(pars, filename, a_max=2, t_0_max=6):
     otbct = RecursiveBCT(pars, a_max, t_0_max)
     t_0_array, a_array, kappa_minus = otbct.calculate_kappa_minus()
     a, t_0 = np.meshgrid(a_array, t_0_array)
+
     mx = round(t_0_max * pars.get_period() / 10)
     my = round(a_max * pars.get_period() / 10)
     Plotter.plot_3D(t_0, a, kappa_minus, filename + '_60_10', mx=mx, my=my)
@@ -157,8 +158,8 @@ def main():
                       3, 3, 3, 3, 2, 2, 2, 2, 1, 1, 1, 1])
     par = TestParameters1(beta2, p=1/3, h=0.25, period_time=T)
     t_0_array, a_array, kappa_plus = recursive_bct_test(
-        par, '../../figures/periodic/fct_re_variable_p03', a_max=2,
-        t_0_max=3)
+        par, '../../figures/periodic/bct_re_test_p03', a_max=2,
+        t_0_max=2)
     return t_0_array, a_array, kappa_plus
 
 
