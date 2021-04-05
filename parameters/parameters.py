@@ -6,6 +6,7 @@ Created on Mon Nov 30 11:49:44 2020
 @author: saitel
 """
 from math import sin, pi
+import numpy as np
 
 
 class Parameters:
@@ -196,6 +197,64 @@ class TestParameters1(Parameters):
 
     def get_sigma(self, a, t):
         return self.sigma
+
+    def get_p(self):
+        return self.p
+
+    def get_h(self):
+        return self.h
+
+    def get_period(self):
+        return self.period
+
+    def get_period_length(self):
+        return self.period_length
+
+
+class TestParameters2(Parameters):
+    #  beta1(a) = const.,  dbeta1/da = 0
+    def __init__(self, beta2, sigma2=np.array([1, 1, 1, 1, 3, 3, 3, 3, 3.5,
+                                               3.5, 3.5, 3.5, 4, 4, 4, 4, 3, 3,
+                                               3, 3, 2, 2, 2, 2, 1, 1, 1, 1]),
+                 p=1/3, h=0.25, period_time=7, beta1=1.0,
+                 mu=0.3, sigma1=0.5):
+        self.p = p
+        self.h = h
+        self.period = period_time
+        self.period_length = int(round(period_time / h, 1))
+        self.beta1 = beta1
+        self.beta2 = beta2
+        self.mu = mu
+        self.sigma1 = sigma1
+        self.sigma2 = sigma2
+
+    def get_beta1(self, a):
+        return self.beta1
+
+    def get_beta2(self, t):
+        index = int(t / self.h) % self.period_length
+        return self.beta2[index]
+
+    def get_beta(self, a, t):
+        return self.get_beta1(a) * self.get_beta2(t)
+
+    def get_dbeta(self, a, t):
+        """
+        Derivative of beta wrt a
+        """
+        return 0
+
+    def get_mu(self, a):
+        return self.mu
+
+    def get_sigma1(self, a):
+        return self.sigma1
+
+    def get_sigma2(self, t):
+        return abs(sin(pi / 7 * t))
+
+    def get_sigma(self, a, t):
+        return self.get_sigma1(a) * self.get_sigma2(t)
 
     def get_p(self):
         return self.p
