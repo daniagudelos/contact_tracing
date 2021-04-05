@@ -8,7 +8,7 @@ Created on Wed Jan 20 14:43:24 2021
 import numpy as np
 import logging
 from helper.exporter import Exporter
-from parameters.parameters import TestParameters1
+from parameters.parameters import TestParameters2
 from periodic.no_contact_tracing import NoCT
 from periodic.backward_tracing.one_time_bct import OneTimeBCT
 from periodic.forward_tracing.one_time_fct import OneTimeFCT
@@ -19,7 +19,7 @@ from periodic.full_tracing.recursive_lct import RecursiveLCT
 
 
 class ReproductionNumberCalculator:
-    def __init__(self, logger, parameters, a_max, t_0_max, trunc=4):
+    def __init__(self, logger, parameters, a_max, t_0_max, trunc=2):
         """
         Parameters
         ----------
@@ -32,7 +32,7 @@ class ReproductionNumberCalculator:
         t_0_max : INTEGER
             Number of t_0 periods to calculate
         trunc : INTEGER, optional
-            Number of extra periods to approximate infinity. The default is 4.
+            Number of extra periods to approximate infinity.
 
         Returns
         -------
@@ -50,14 +50,15 @@ class ReproductionNumberCalculator:
         self.beta_array = None
         # Number of extra periods to approximate infinity
         self.trunc = trunc
-        self.a_max = (a_max + self.trunc) * self.period
-        self.a_length = int(round(self.a_max / self.h, 1))
-        self.t_0_max = t_0_max * self.period
-        self.t_0_length = int(round(self.t_0_max / self.h, 1))
-        self.t_0_array = np.linspace(0.0, self.t_0_max, self.t_0_length + 1)
-        self.t_array = np.linspace(0.0, self.t_0_max, self.t_0_length + 1)
-        self.t_length = int(round(self.t_0_max / self.h, 1))
-        self.a_array = np.linspace(0.0, self.a_max,
+        self.a_max = a_max + self.trunc
+        self.a_length = self.a_max * self.period_length
+        self.t_0_max = t_0_max
+        self.t_0_length = self.t_0_max * self.period_length
+        self.t_0_array = np.linspace(0.0, self.t_0_max * self.period_length,
+                                     self.t_0_length + 1)
+        self.t_array = np.array(self.t_0_array)
+        self.t_length = self.t_0_max * self.period_length
+        self.a_array = np.linspace(0.0, self.a_max * self.period_length,
                                    self.a_length + 1)
 
         self.switcher = {
@@ -83,56 +84,69 @@ class ReproductionNumberCalculator:
         self.kappa = None
 
     def get_kappa(self, tracing_type):
-        # self.logger.info('Calculating kappa - type: %s', str(tracing_type))
-        func = self.switcher.get(tracing_type)
-        # name = (self.name_switcher.get(tracing_type) + '_it' +
-        #        str(self.optimizer_iteration))
-        kappa = func()
-
-        # if tracing_type != 0:
-        #    Exporter.save_variable(kappa, name)
+        try:
+            name = self.name_switcher.get(tracing_type)
+            kappa = Exporter.load_variable(name)
+        except (FileNotFoundError):
+            print('Calculating kappa - type: ', tracing_type)
+            func = self.switcher.get(tracing_type)
+            kappa = func()
         return kappa
 
     def calculate_kappa_nct(self):
         nct = NoCT(parameters=self.parameters, a_max=self.a_max,
                    t_0_max=self.t_0_max)
         _, _, kappa = nct.calculate_kappa_hat()
+        # name = self.name_switcher.get(0)
+        # Exporter.save_variable(kappa, name)
         return kappa
 
     def calculate_kappa_ot_bct(self):
         nct = OneTimeBCT(parameters=self.parameters, a_max=self.a_max,
                          t_0_max=self.t_0_max)
         _, _, kappa = nct.calculate_kappa_minus()
+        # name = self.name_switcher.get(1)
+        # Exporter.save_variable(kappa, name)
         return kappa
 
     def calculate_kappa_re_bct(self):
         nct = RecursiveBCT(parameters=self.parameters, a_max=self.a_max,
                            t_0_max=self.t_0_max)
         _, _, kappa = nct.calculate_kappa_minus()
+        name = self.name_switcher.get(4)
+        Exporter.save_variable(kappa, name)
         return kappa
 
     def calculate_kappa_ot_fct(self):
-        nct = OneTimeFCT(parameters=self.parameters, n_gen=4, trunc=10,
+        nct = OneTimeFCT(parameters=self.parameters, n_gen=3, trunc=3,
                          a_max=self.a_max, t_0_max=self.t_0_max)
         _, _, kappa = nct.calculate_kappa_plus()
+        name = self.name_switcher.get(2)
+        Exporter.save_variable(kappa, name)
         return kappa
 
     def calculate_kappa_re_fct(self):
-        nct = RecursiveFCT(parameters=self.parameters, n_gen=4, trunc=0,
+        nct = RecursiveFCT(parameters=self.parameters, n_gen=3, trunc=3,
                            a_max=self.a_max, t_0_max=self.t_0_max)
         _, _, kappa = nct.calculate_kappa_plus()
+        name = self.name_switcher.get(5)
+        Exporter.save_variable(kappa, name)
         return kappa
 
     def calculate_kappa_ot_lct(self):
-        nct = OneTimeLCT(parameters=self.parameters, n_gen=4, trunc=10,
+        nct = OneTimeLCT(parameters=self.parameters, n_gen=3, trunc=3,
                          a_max=self.a_max, t_0_max=self.t_0_max)
         _, _, kappa = nct.calculate_kappa()
+        name = self.name_switcher.get(3)
+        Exporter.save_variable(kappa, name)
         return kappa
 
     def calculate_kappa_re_lct(self):
-        nct = RecursiveLCT(parameters=self.parameters, n_gen=4, trunc=0,
+        nct = RecursiveLCT(parameters=self.parameters, n_gen=3, trunc=3,
                            a_max=self.a_max, t_0_max=self.t_0_max)
         _, _, kappa = nct.calculate_kappa()
+        name = self.name_switcher.get(6)
+        Exporter.save_variable(kappa, name)
         return kappa
 
     def build_vector(self, w):
@@ -177,7 +191,7 @@ class ReproductionNumberCalculator:
 
     def calculateReproductionNumber(self, beta, tracing_type):
         self.beta_array = beta
-        self.parameters = TestParameters1(beta)
+        self.parameters = TestParameters2(beta)
         self.beta = self.parameters.get_beta
         self.kappa = self.get_kappa(tracing_type)
 
@@ -187,11 +201,13 @@ class ReproductionNumberCalculator:
                          np.array2string(self.beta_array))
         self.logger.info('Iteration %s, ew: %s', self.optimizer_iteration,
                          str(ew))
+        self.logger.info('Iteration %s, ev: %s', self.optimizer_iteration,
+                         str(ev))
 
         if tracing_type != 0:
             self.optimizer_iteration += 1
 
-        return ew
+        return ew, ev
 
     def get_eigenpair(self):
         ev = np.zeros_like(self.t_0_array)
@@ -212,20 +228,35 @@ class ReproductionNumberCalculator:
 
 def main():
     T = 7
+    # min case 1
+    #                   1      2      3      4      5      6      7      8
+    # beta0 = np.array([1e-60, 1e-60, 1e-60, 1e-60, 1e-60, 1e-60, 1e-60, 1e-60,
+    #                   1e-60, 1e-60, 1e-60, 1e-60, 1e-60, 1e-60, 1e-60, 1e-60,
+    #                   1e-60, 1e-60, 1e-60, 1e-60, 25.04890, 1e-60, 1e-60, 1e-60,
+    #                   1e-60, 1e-60, 1e-60, 1e-60])
 
-    beta0 = np.array([9.08611232e-23, 2.68520261e-18, 1.37888902e-04,
-                      8.62416099e-01, 3.45384645e+00, 2.90048590e+00,
-                      3.10142458e+00, 2.56611650e+00, 3.69617468e+00,
-                      3.53392347e+00, 3.93938788e+00, 3.83235544e+00,
-                      4.10657378e+00, 4.12117064e+00, 3.75965060e+00,
-                      3.88962677e+00, 3.58391512e+00, 3.23374595e+00,
-                      3.55333169e+00, 3.17617161e+00, 2.17393546e+00,
-                      2.09780564e+00, 2.00315860e+00, 2.27245852e+00,
-                      9.45962165e-01, 3.93843186e-01, 1.73737956e-04,
-                      6.19287167e-04])
-    beta1 = np.array([1, 1, 1, 1, 3, 3, 3, 3, 3.5, 3.5, 3.5, 3.5, 4, 4, 4, 4,
-                      3, 3, 3, 3, 2, 2, 2, 2, 1, 1, 1, 1])
-    par = TestParameters1(beta1, p=1/3, h=0.25, period_time=T)
+    # max case 1
+    # beta0 = np.array([1.65799, 1.65799, 1.65799, 1.65799, 1.65799, 1.65799,
+    #                   1.65799, 1.65799, 1.65799, 1.65799, 1.65799, 1.65799,
+    #                   1.65799, 1.65799, 1.65799, 1.65799, 1.65799, 1.65799,
+    #                   1.65799, 1.65799, 1.65799, 1.65799, 1.65799, 1.65799,
+    #                   1.65799, 1.65799, 1.65799, 1.65799])
+
+    # min case 2
+    #                   1      2      3      4      5      6      7      8
+    beta0 = np.array([1e-60, 1e-60, 1e-60, 1e-60, 1e-60, 1e-60, 1e-60, 1e-60,
+                      1e-60, 1e-60, 1e-60, 1e-60, 11.877, 1e-60, 1e-60, 1e-60,
+                      1e-60, 1e-60, 1e-60, 1e-60, 1e-60, 1e-60, 1e-60, 1e-60,
+                      1e-60, 1e-60, 1e-60, 1e-60])
+
+    # max case 2
+    # beta0 = np.array([1.00859, 1.00859, 1.00859, 1.00859, 1.00859, 1.00859,
+    #                   1.00859, 1.00859, 1.00859, 1.00859, 1.00859, 1.00859,
+    #                   1.00859, 1.00859, 1.00859, 1.00859, 1.00859, 1.00859,
+    #                   1.00859, 1.00859, 1.00859, 1.00859, 1.00859, 1.00859,
+    #                   1.00859, 1.00859, 1.00859, 1.00859])
+
+    par = TestParameters2(beta0, p=1/3, h=0.25, period_time=T)
 
     logger = logging.getLogger('rep_num_test')
     formatter = logging.Formatter('%(asctime)s %(message)s',
@@ -235,14 +266,14 @@ def main():
     fh.setFormatter(formatter)
     logger.addHandler(fh)
 
-    rnc = ReproductionNumberCalculator(logger, par, a_max=2, t_0_max=2)
-    ew1 = rnc.calculateReproductionNumber(beta0, 2)
-    return ew1
+    rnc = ReproductionNumberCalculator(logger, par, a_max=2, t_0_max=2,
+                                       trunc=0)
+    ew, ev = rnc.calculateReproductionNumber(beta0, 1 )
+    return ew, ev
 
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO,
                         format='%(asctime)s %(message)s',
                         datefmt='%m/%d/%Y %I:%M:%S %p')
-    ew1 = main()
-    print('ew1 ', ew1)
+    ew, ev = main()
