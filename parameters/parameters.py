@@ -6,7 +6,6 @@ Created on Mon Nov 30 11:49:44 2020
 @author: saitel
 """
 from math import sin, pi
-import numpy as np
 
 
 class Parameters:
@@ -213,10 +212,7 @@ class TestParameters1(Parameters):
 
 class TestParameters2(Parameters):
     #  beta1(a) = const.,  dbeta1/da = 0
-    def __init__(self, beta2, sigma2=np.array([1, 1, 1, 1, 3, 3, 3, 3, 3.5,
-                                               3.5, 3.5, 3.5, 4, 4, 4, 4, 3, 3,
-                                               3, 3, 2, 2, 2, 2, 1, 1, 1, 1]),
-                 p=1/3, h=0.25, period_time=7, beta1=1.0,
+    def __init__(self, beta2, p=1/3, h=0.25, period_time=7, beta1=1.0,
                  mu=0.3, sigma1=0.5):
         self.p = p
         self.h = h
@@ -226,7 +222,6 @@ class TestParameters2(Parameters):
         self.beta2 = beta2
         self.mu = mu
         self.sigma1 = sigma1
-        self.sigma2 = sigma2
 
     def get_beta1(self, a):
         return self.beta1
@@ -251,7 +246,7 @@ class TestParameters2(Parameters):
         return self.sigma1
 
     def get_sigma2(self, t):
-        return abs(sin(pi / 7 * t))
+        return 1/2 * sin(2 * pi / self.period * t) + 1/2
 
     def get_sigma(self, a, t):
         return self.get_sigma1(a) * self.get_sigma2(t)
