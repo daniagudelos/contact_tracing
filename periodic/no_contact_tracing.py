@@ -6,9 +6,11 @@ Created on Wed Jan 13 13:18:07 2021
 @author: saitel
 """
 import numpy as np
+import warnings
 import scipy.integrate as integrate
 from math import exp
-from parameters.parameters import ConstantParameters, VariableParameters
+from scipy.integrate import simps as simpson
+from parameters.parameters import ConstantParameters, VariableParameters, TestParameters2
 from helper.plotter import Plotter
 from helper.exporter import Exporter
 
@@ -41,12 +43,11 @@ class NoCT():
     def calculate_kappa_hat(self):
         for i in range(0, len(self.t_0_array)):
             for j in range(0, len(self.a_array)):
-                self.kappa_hat[i, j] = self.calculate_kappa_hat_point(
-                    self.a_array[j], self.t_0_array[i])
+                self.kappa_hat[i, j] = self.calculate_kappa_hat_point(j, i)
         self.calculated = True
         return self.t_0_array, self.a_array, self.kappa_hat
 
-    def calculate_kappa_hat_point(self, a_v, t_0_v):
+    def calculate_kappa_hat_point(self, a_index, t_0_index):
         """
         Returns kappa_hat(a;t_0)
 
@@ -60,9 +61,20 @@ class NoCT():
         Float. Integral value
 
         """
+        a_v = self.a_array[a_index]
+        if(a_v == 114):
+            print('here')
+        t_0_v = self.t_0_array[t_0_index]
         result = integrate.quad(lambda a: self.mu(a) +
                                 self.sigma(a, t_0_v + a), 0, a_v)
         return exp(- result[0])
+
+        # temp = np.zeros(a_index + 1)
+        # for i in range(0, a_index + 1):
+        #     temp[i] = (self.mu(self.a_array[i]) +
+        #                self.sigma(self.a_array[i], self.t_0_array[t_0_index] +
+        #                           self.a_array[i]))
+        # return exp(-simpson(temp))
 
     def calculate_dkappa_hat(self):
         if(self.calculated is False):
@@ -83,15 +95,24 @@ def nct_test(pars, filename, a_max=2, t_0_max=6):
     t_0_array, a_array, kappa_hat = nct.calculate_kappa_hat()
     # dkappa_hat = nct.calculate_dkappa_hat()
     a, t_0 = np.meshgrid(a_array, t_0_array)
-    Plotter.plot_3D(t_0, a, kappa_hat, filename + '_60_10', my=0.5)
+
+    mx = round(t_0_max * pars.get_period() / 10)
+    my = round(a_max * pars.get_period() / 10)
+    Plotter.plot_3D(t_0, a, kappa_hat, filename + '_60_10', my=my, mx=mx)
     Plotter.plot_3D(t_0, a, kappa_hat, filename + '_n60_10', azim=-60,
-                    my=0.5)
+                    my=my, mx=mx)
     return t_0, a, kappa_hat
 
 
 def main():
+    beta0 = np.array([1.65799, 1.65799, 1.65799, 1.65799, 1.65799, 1.65799,
+                      1.65799, 1.65799, 1.65799, 1.65799, 1.65799, 1.65799,
+                      1.65799, 1.65799, 1.65799, 1.65799, 1.65799, 1.65799,
+                      1.65799, 1.65799, 1.65799, 1.65799, 1.65799, 1.65799,
+                      1.65799, 1.65799, 1.65799, 1.65799])
     t_0_array, a_array, kappa_hat = nct_test(
-        VariableParameters(p=1/3, h=0.25),
+        #VariableParameters(p=1/3, h=0.25),
+        TestParameters2(beta0),
         '../figures/non_periodic/NCT_variable_p03', 2, 2)
     return t_0_array, a_array, kappa_hat
 
