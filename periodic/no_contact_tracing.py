@@ -6,13 +6,10 @@ Created on Wed Jan 13 13:18:07 2021
 @author: saitel
 """
 import numpy as np
-import warnings
 import scipy.integrate as integrate
 from math import exp
-from scipy.integrate import simps as simpson
-from parameters.parameters import ConstantParameters, VariableParameters, TestParameters2
+from parameters.parameters import TestParameters2
 from helper.plotter import Plotter
-from helper.exporter import Exporter
 
 
 class NoCT():

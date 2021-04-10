@@ -14,7 +14,7 @@ class Parameters:
 
 class ConstantParameters(Parameters):
 
-    def __init__(self, beta=1.0, mu=0.3, sigma=0.5, p=0.5, h=0.05):
+    def __init__(self, beta=1.0, mu=0.3, sigma=0.5, p=0.5, h=0.05, period=7):
         """
         Initialize the set of constant parameters
 
@@ -46,6 +46,8 @@ class ConstantParameters(Parameters):
         self.mu = mu * self.h
         self.sigma = sigma * self.h
         self.p = p
+        self.period = period
+        self.period_length = int(round(period / h, 1))
 
     def get_beta(self, a, t):
         return self.beta
@@ -64,6 +66,12 @@ class ConstantParameters(Parameters):
 
     def get_h(self):
         return self.h
+
+    def get_period(self):
+        return self.period
+
+    def get_period_length(self):
+        return self.period_length
 
 
 class VariableParameters(Parameters):

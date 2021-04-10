@@ -8,7 +8,7 @@ Created on Wed Jan 20 14:43:24 2021
 import numpy as np
 import logging
 from helper.exporter import Exporter
-from parameters.parameters import TestParameters2
+from parameters.parameters import TestParameters1
 from periodic.no_contact_tracing import NoCT
 from periodic.backward_tracing.one_time_bct import OneTimeBCT
 from periodic.forward_tracing.one_time_fct import OneTimeFCT
@@ -50,15 +50,15 @@ class ReproductionNumberCalculator:
         self.beta_array = None
         # Number of extra periods to approximate infinity
         self.trunc = trunc
-        self.a_max = a_max + self.trunc
-        self.a_length = self.a_max * self.period_length
+        self.a_max = (a_max + self.trunc)
+        self.a_length = (a_max + self.trunc) * self.period_length
         self.t_0_max = t_0_max
-        self.t_0_length = self.t_0_max * self.period_length
-        self.t_0_array = np.linspace(0.0, self.t_0_max * self.period_length,
+        self.t_0_length = t_0_max * self.period_length
+        self.t_0_array = np.linspace(0.0, t_0_max * self.period,
                                      self.t_0_length + 1)
         self.t_array = np.array(self.t_0_array)
-        self.t_length = self.t_0_max * self.period_length
-        self.a_array = np.linspace(0.0, self.a_max * self.period_length,
+        self.t_length = t_0_max * self.period_length
+        self.a_array = np.linspace(0.0, (a_max + self.trunc) * self.period,
                                    self.a_length + 1)
 
         self.switcher = {
@@ -151,12 +151,12 @@ class ReproductionNumberCalculator:
 
     def build_vector(self, w):
 
-        F_sum = np.zeros(self.period_length + 1)
-        for i in range(0, self.period_length + 1):
-            F = np.zeros(self.period_length + 1)
+        F_sum = np.zeros(self.period_length)
+        for i in range(0, self.period_length):
+            F = np.zeros(self.period_length)
 
             # First part: from 0 to t (from 0 to i-1)
-            for j in range(0, max(0, i - 2)):
+            for j in range(0, max(0, i)):
                 H_sum = 0
                 temp = np.zeros((self.trunc + 1))
                 a_index = i - j  # This is always +
@@ -171,7 +171,7 @@ class ReproductionNumberCalculator:
                 F[j] = H_sum * w[j]
 
             #  Second part: from t to T (from i-1 to N-1)
-            for j in range(max(0, i - 1), self.period_length + 1):
+            for j in range(max(0, i), self.period_length):
                 H_sum = 0
                 temp = np.zeros((self.trunc + 1))
                 index = i - j
@@ -191,7 +191,7 @@ class ReproductionNumberCalculator:
 
     def calculateReproductionNumber(self, beta, tracing_type):
         self.beta_array = beta
-        self.parameters = TestParameters2(beta)
+        self.parameters = TestParameters1(beta)
         self.beta = self.parameters.get_beta
         self.kappa = self.get_kappa(tracing_type)
 
@@ -210,19 +210,22 @@ class ReproductionNumberCalculator:
         return ew, ev
 
     def get_eigenpair(self):
-        ev = np.zeros_like(self.t_0_array)
-        ev[1] = 1
-        ev[3] = 1
-        ev = ev / np.linalg.norm(ev)
+        # ev = np.zeros_like(self.t_0_array)
+        # ev[1] = 1
+        # ev[3] = 1
+        # ev = ev / np.linalg.norm(ev)
+        ev = np.random.rand(self.period_length)
         ew = 0
 
         error = 10
-        while error > 1e-5:
+        iterations = 0
+        while error > 1e-8 or iterations < 5:
             z = self.build_vector(ev)  # np.matmul(A, ev)  # A  * ev
             ev = z / np.linalg.norm(z)
             Aev = self.build_vector(ev)
             ew = np.transpose(ev).dot(Aev)
             error = np.linalg.norm(Aev - ew * ev)
+            iterations += 1
         return ew, ev
 
 
@@ -231,23 +234,23 @@ def main():
     # min case 1
     #                   1      2      3      4      5      6      7      8
     # beta0 = np.array([1e-60, 1e-60, 1e-60, 1e-60, 1e-60, 1e-60, 1e-60, 1e-60,
-    #                   1e-60, 1e-60, 1e-60, 1e-60, 1e-60, 1e-60, 1e-60, 1e-60,
-    #                   1e-60, 1e-60, 1e-60, 1e-60, 25.04890, 1e-60, 1e-60, 1e-60,
-    #                   1e-60, 1e-60, 1e-60, 1e-60])
+    #                    1e-60, 1e-60, 1e-60, 1e-60, 1e-60, 1e-60, 1e-60, 1e-60,
+    #                    1e-60, 1e-60, 1e-60, 1e-60,  1e-60, 1e-60, 1e-60,
+    #                    1e-60, 1e-60, 1e-60,25.04890, 1e-60])
 
     # max case 1
-    # beta0 = np.array([1.65799, 1.65799, 1.65799, 1.65799, 1.65799, 1.65799,
-    #                   1.65799, 1.65799, 1.65799, 1.65799, 1.65799, 1.65799,
-    #                   1.65799, 1.65799, 1.65799, 1.65799, 1.65799, 1.65799,
-    #                   1.65799, 1.65799, 1.65799, 1.65799, 1.65799, 1.65799,
-    #                   1.65799, 1.65799, 1.65799, 1.65799])
+    beta0 = np.array([0.8, 0.8, 0.8, 0.8, 0.8, 0.8,
+                      0.8, 0.8, 0.8, 0.8, 0.8, 0.8,
+                      0.8, 0.8, 0.8, 0.8, 0.8, 0.8,
+                      0.8, 0.8, 0.8, 0.8, 0.8, 0.8,
+                      0.8, 0.8, 0.8, 0.8])
 
     # min case 2
     #                   1      2      3      4      5      6      7      8
-    beta0 = np.array([1e-60, 1e-60, 1e-60, 1e-60, 1e-60, 1e-60, 1e-60, 1e-60,
-                      1e-60, 1e-60, 1e-60, 1e-60, 11.877, 1e-60, 1e-60, 1e-60,
-                      1e-60, 1e-60, 1e-60, 1e-60, 1e-60, 1e-60, 1e-60, 1e-60,
-                      1e-60, 1e-60, 1e-60, 1e-60])
+    # beta0 = np.array([1e-60, 1e-60, 1e-60, 1e-60, 1e-60, 1e-60, 1e-60, 1e-60,
+    #                   1e-60, 1e-60, 1e-60, 1e-60, 100, 1e-60,  1e-60,  1e-60,
+    #                   1e-60, 1e-60,  1e-60, 1e-60, 1e-60, 1e-60, 1e-60, 1e-60,
+    #                   1e-60, 1e-60, 1e-60, 1e-60])
 
     # max case 2
     # beta0 = np.array([1.00859, 1.00859, 1.00859, 1.00859, 1.00859, 1.00859,
@@ -256,7 +259,7 @@ def main():
     #                   1.00859, 1.00859, 1.00859, 1.00859, 1.00859, 1.00859,
     #                   1.00859, 1.00859, 1.00859, 1.00859])
 
-    par = TestParameters2(beta0, p=1/3, h=0.25, period_time=T)
+    par = TestParameters1(beta0, p=1/3, h=0.25, period_time=T)
 
     logger = logging.getLogger('rep_num_test')
     formatter = logging.Formatter('%(asctime)s %(message)s',
@@ -266,9 +269,8 @@ def main():
     fh.setFormatter(formatter)
     logger.addHandler(fh)
 
-    rnc = ReproductionNumberCalculator(logger, par, a_max=2, t_0_max=2,
-                                       trunc=0)
-    ew, ev = rnc.calculateReproductionNumber(beta0, 1 )
+    rnc = ReproductionNumberCalculator(logger, par, a_max=2, t_0_max=2)
+    ew, ev = rnc.calculateReproductionNumber(beta0, 0)
     return ew, ev
 
 

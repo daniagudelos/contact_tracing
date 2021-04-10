@@ -49,15 +49,15 @@ class ReproductionNumberCalculator:
         self.beta_array = None
         # Number of extra periods to approximate infinity
         self.trunc = trunc
-        self.a_max = a_max + self.trunc
-        self.a_length = self.a_max * self.period_length
+        self.a_max = (a_max + self.trunc)
+        self.a_length = (a_max + self.trunc) * self.period_length
         self.t_0_max = t_0_max
-        self.t_0_length = self.t_0_max * self.period_length
-        self.t_0_array = np.linspace(0.0, self.t_0_max * self.period_length,
+        self.t_0_length = t_0_max * self.period_length
+        self.t_0_array = np.linspace(0.0, t_0_max * self.period,
                                      self.t_0_length + 1)
         self.t_array = np.array(self.t_0_array)
-        self.t_length = self.t_0_max * self.period_length
-        self.a_array = np.linspace(0.0, self.a_max * self.period_length,
+        self.t_length = t_0_max * self.period_length
+        self.a_array = np.linspace(0.0, (a_max + self.trunc) * self.period,
                                    self.a_length + 1)
 
         self.switcher = {
@@ -131,12 +131,12 @@ class ReproductionNumberCalculator:
 
     def build_vector(self, w):
 
-        F_sum = np.zeros(self.period_length + 1)
-        for i in range(0, self.period_length + 1):
-            F = np.zeros(self.period_length + 1)
+        F_sum = np.zeros(self.period_length)
+        for i in range(0, self.period_length):
+            F = np.zeros(self.period_length)
 
             # First part: from 0 to t (from 0 to i-1)
-            for j in range(0, max(0, i - 2)):
+            for j in range(0, max(0, i)):
                 H_sum = 0
                 temp = np.zeros((self.trunc + 1))
                 a_index = i - j  # This is always +
@@ -151,7 +151,7 @@ class ReproductionNumberCalculator:
                 F[j] = H_sum * w[j]
 
             #  Second part: from t to T (from i-1 to N-1)
-            for j in range(max(0, i - 1), self.period_length + 1):
+            for j in range(max(0, i), self.period_length):
                 H_sum = 0
                 temp = np.zeros((self.trunc + 1))
                 index = i - j
@@ -188,34 +188,33 @@ class ReproductionNumberCalculator:
         return ew
 
     def get_eigenpair(self):
-        ev = np.zeros_like(self.t_0_array)
-        ev[1] = 1
-        ev[3] = 1
-        ev = ev / np.linalg.norm(ev)
+        # ev = np.zeros_like(self.t_0_array)
+        # ev[1] = 1
+        # ev[3] = 1
+        # ev = ev / np.linalg.norm(ev)
+        ev = np.random.rand(self.period_length)
         ew = 0
 
         error = 10
-        while error > 1e-5:
+        iterations = 0
+        while error > 1e-8 or iterations < 5:
             z = self.build_vector(ev)  # np.matmul(A, ev)  # A  * ev
             ev = z / np.linalg.norm(z)
             Aev = self.build_vector(ev)
             ew = np.transpose(ev).dot(Aev)
             error = np.linalg.norm(Aev - ew * ev)
+            iterations += 1
         return ew, ev
 
 
 def main():
     T = 7
 
-    beta0 = np.array([1e-60, 1e-60, 1e-60, 1e-60, 1e-60, 1e-60, 1e-60, 1e-60,
-                      1e-60, 1e-60, 1e-60, 1e-60, 1e-60, 1e-60, 1e-60, 1e-60,
-                      1e-60, 1e-60, 1e-60, 1e-60, 25.0489, 1e-60, 1e-60, 1e-60,
-                      1e-60, 1e-60, 1e-60, 1e-60])
-    # beta0 = np.array([1, 1, 1, 1, 3, 3, 3, 3, 3.5, 3.5, 3.5, 3.5, 4, 4, 4, 4,
-    #                   3, 3, 3, 3, 2, 2, 2, 2, 1, 1, 1, 1])
-
-    # beta0 = np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-    #                  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
+    beta0 = np.array([0.8, 0.8, 0.8, 0.8, 0.8, 0.8,
+                      0.8, 0.8, 0.8, 0.8, 0.8, 0.8,
+                      0.8, 0.8, 0.8, 0.8, 0.8, 0.8,
+                      0.8, 0.8, 0.8, 0.8, 0.8, 0.8,
+                      0.8, 0.8, 0.8, 0.8])
 
     par = TestParameters1(beta0, p=1/3, h=0.25, period_time=T)
 
@@ -228,7 +227,7 @@ def main():
     logger.addHandler(fh)
 
     rnc = ReproductionNumberCalculator(logger, par, a_max=2, t_0_max=2)
-    ew1 = rnc.calculateReproductionNumber(beta0, 2)
+    ew1 = rnc.calculateReproductionNumber(beta0, 0)
     return ew1
 
 
@@ -236,5 +235,4 @@ if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO,
                         format='%(asctime)s %(message)s',
                         datefmt='%m/%d/%Y %I:%M:%S %p')
-    ew1 = main()
-    print('ew1 ', ew1)
+    ew = main()
