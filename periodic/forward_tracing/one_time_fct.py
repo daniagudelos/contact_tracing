@@ -9,7 +9,6 @@ from periodic.no_contact_tracing import NoCT
 from periodic.backward_tracing.one_time_bct import OneTimeBCT
 from parameters.parameters import TestParameters1
 import numpy as np
-from timeit import default_timer as timer
 from scipy.integrate import simps as simpson
 from scipy import optimize
 from joblib import Parallel, delayed
@@ -41,20 +40,20 @@ class OneTimeFCT:
         self.bct = OneTimeBCT(parameters, self.trunc, t_0_max)
         self.t_0_array, self.a_array, self.kappa_hat = \
             self.nct.calculate_kappa_hat()
-        Exporter.save_variable(self.kappa_hat, 'kappa_nct')
-        Exporter.save_variable(self.t_0_array, 't_0_array')
-        Exporter.save_variable(self.a_array, 'a_array')
+        # Exporter.save_variable(self.kappa_hat, 'kappa_nct')
+        # Exporter.save_variable(self.t_0_array, 't_0_array')
+        # Exporter.save_variable(self.a_array, 'a_array')
 
-        # self.t_0_array = Exporter.load_variable('t_0_array')
-        # self.a_array = Exporter.load_variable('a_array')
-        # self.kappa_hat = Exporter.load_variable('kappa_nct')
+        self.t_0_array = Exporter.load_variable('t_0_array')
+        self.a_array = Exporter.load_variable('a_array')
+        self.kappa_hat = Exporter.load_variable('kappa_nct')
         self.it = 0
         self.f = []
 
     def calculate_f_0(self):
-        _, _, kappa_minus = self.bct.calculate_kappa_minus()
-        # kappa_minus = Exporter.load_variable('kappa_ot_bct')
-        Exporter.save_variable(kappa_minus, 'kappa_ot_bct')
+        # _, _, kappa_minus = self.bct.calculate_kappa_minus()
+        kappa_minus = Exporter.load_variable('kappa_ot_bct')
+        # Exporter.save_variable(kappa_minus, 'kappa_ot_bct')
         f_0 = kappa_minus / self.kappa_hat
         return f_0
 
@@ -94,8 +93,8 @@ class OneTimeFCT:
 
         # from 0 to period
         f_plus[0: self.period_length + 1, :] = np.asarray(
-            Parallel(n_jobs=-1)(delayed(self.calculate_f_plus_for_cohort)
-                                (j) for j in range(0, self.period_length + 1)))
+            Parallel(n_jobs=1)(delayed(self.calculate_f_plus_for_cohort)
+                               (j) for j in range(0, self.period_length + 1)))
 
         # Copy values to the rest of the periods in t_0-axis
         for j in range(1, t_0_periods):  # 1 : t_0_periods - 1
@@ -111,7 +110,6 @@ class OneTimeFCT:
         return self.f[-1]
 
     def calculate_f_plus_for_cohort(self, t_0_index):
-        print(t_0_index)
         f_cohort = np.zeros((self.inf_length + 1))
         # Calculate d for t0[t_0_index]
         d = self.calculate_d(t_0_index)
@@ -119,56 +117,25 @@ class OneTimeFCT:
         f_old = self.f[-1]
         f_cohort[0] = 1
 
-        # from 1 to a_max + b_max
-        for a_index in range(1, self.inf_length + 1):
-            # integral
-            temp1 = np.zeros((self.inf_length + 1))
-            temp2 = np.zeros((self.inf_length + 1))
-
-            # From 0 to a
-            for b_index in range(0, a_index):
-                index = (t_0_index - b_index) % self.period_length
-                temp1[b_index] = (self.beta_integral(b_index, t_0_index) *
-                                  self.kappa_hat[index, b_index] *
-                                  f_old[index, b_index] *
-                                  self.sigma(self.a_array[b_index],
-                                             self.t_0_array[t_0_index]))
-
-            # From a to infity
-            for b_index in range(a_index + 1, self.inf_length + 1):
-                index = (t_0_index - b_index) % self.period_length
-                index2 = (t_0_index - b_index + a_index) % self.period_length
-                temp2[b_index] = (self.beta_integral(b_index, t_0_index) *
-                                  self.kappa_hat[index, b_index] *
-                                  f_old[index, b_index] *
-                                  self.sigma(self.a_array[b_index],
-                                             self.t_0_array[t_0_index]) -
-                                  self.beta_integral(b_index - a_index,
-                                                     t_0_index) *
-                                  self.kappa_hat[index2, b_index] *
-                                  f_old[index2, b_index] *
-                                  self.sigma(self.a_array[b_index],
-                                             self.t_0_array[t_0_index]
-                                             + self.a_array[a_index]))
+        temp1 = np.zeros((self.a_length + 1))
+        for a_aindex in range(0, self.a_length + 1):
+            for a_index in range(0, a_aindex):
+                temp = np.zeros((self.inf_length))
+                for b_index in range(0, self.inf_length - a_aindex):
+                    index = (t_0_index - b_index) % self.period_length
+                    temp[b_index] = (self.beta(self.a_array[b_index],
+                                               self.t_0_array[t_0_index]) *
+                                     self.sigma(self.a_array[a_index + b_index],
+                                                self.t_0_array[t_0_index] +
+                                                self.a_array[a_index]) *
+                                     self.kappa_hat[index, a_index + b_index] *
+                                     f_old[index, a_index + b_index])
+                temp1[a_index] = simpson(temp)
 
             # final f
-            removal = self.p() / d * simpson(temp2 + temp1)
-            f_cohort[a_index] = 1 - removal
+            removal = self.p() / d * simpson(temp1)
+            f_cohort[a_aindex] = 1 - removal
         return f_cohort
-
-    def beta_integral(self, a_index, t_0_index):
-        start = 0
-        end = a_index
-        if(a_index < 0):
-            start = a_index
-            end = 0
-
-        beta = np.zeros(abs(start - end) + 1)
-        j = 0
-        for i in range(start, end + 1):
-            beta[j] = self.beta(self.a_array[i], self.t_0_array[t_0_index])
-            j += 1
-        return np.trapz(beta)
 
 
 def one_time_fct_test(pars, filename, a_max=2, t_0_max=6):
