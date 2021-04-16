@@ -79,7 +79,7 @@ class OneTimeFCT:
     def calculate_f_plus(self):
         f_old = self.calculate_f_0()
         self.f.append(f_old)
-        #f_plus = optimize.fixed_point(func=self.calculate_f, x0=f_old,
+        # f_plus = optimize.fixed_point(func=self.calculate_f, x0=f_old,
         #                              xtol=1e-02, method='del2')
         for i in range(0, self.n_gen + 1):
             f_plus = self.calculate_f(f_old)
