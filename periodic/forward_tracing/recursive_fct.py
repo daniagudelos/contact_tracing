@@ -10,7 +10,6 @@ from periodic.backward_tracing.recursive_bct import RecursiveBCT
 from parameters.parameters import TestParameters1
 import numpy as np
 from scipy.integrate import simps as simpson
-from scipy import optimize
 from joblib import Parallel, delayed
 from helper.plotter import Plotter
 from helper.exporter import Exporter
@@ -44,16 +43,16 @@ class RecursiveFCT:
         # Exporter.save_variable(self.t_0_array, 't_0_array')
         # Exporter.save_variable(self.a_array, 'a_array')
 
-        self.t_0_array = Exporter.load_variable('t_0_array')
-        self.a_array = Exporter.load_variable('a_array')
-        self.kappa_hat = Exporter.load_variable('kappa_nct')
+        # self.t_0_array = Exporter.load_variable('t_0_array')
+        # self.a_array = Exporter.load_variable('a_array')
+        # self.kappa_hat = Exporter.load_variable('kappa_nct')
         self.it = 0
         self.f = []
 
     def calculate_f_0(self):
-        # _, _, kappa_minus = self.bct.calculate_kappa_minus()
+        _, _, kappa_minus = self.bct.calculate_kappa_minus()
         # Exporter.save_variable(kappa_minus, 'kappa_re_bct')
-        kappa_minus = Exporter.load_variable('kappa_re_bct')
+        # kappa_minus = Exporter.load_variable('kappa_re_bct')
         f_0 = kappa_minus / self.kappa_hat
         return f_0
 
@@ -104,7 +103,7 @@ class RecursiveFCT:
                 f_plus[1: self.period_length + 1, 0:self.inf_length + 1])
 
         self.it += 1
-        Exporter.save_variable(f_plus, 'f' + str(self.it))
+        # Exporter.save_variable(f_plus, 'f' + str(self.it))
         self.f.append(f_plus)
 
         return self.f[-1]
