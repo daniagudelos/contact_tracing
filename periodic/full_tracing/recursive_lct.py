@@ -7,7 +7,7 @@ Created on Thu Jan 21 19:05:06 2021
 """
 from periodic.backward_tracing.recursive_bct import RecursiveBCT
 from periodic.forward_tracing.recursive_fct import RecursiveFCT
-from parameters.parameters import ConstantParameters, VariableParameters, TestParameters1
+from parameters.parameters import TestParameters1, TestParameters2
 import numpy as np
 from helper.plotter import Plotter
 
@@ -44,49 +44,25 @@ def recursive_lct_test(pars, filename, a_max=2, t_0_max=6):
 
 def main():
     T = 7  # days
-    beta2 = np.array([1, 1, 1, 1, 3, 3, 3, 3, 3.5, 3.5, 3.5, 3.5, 4, 4, 4, 4,
-                      3, 3, 3, 3, 2, 2, 2, 2, 1, 1, 1, 1])
-    par = TestParameters1(beta2, p=1/3, h=0.25, period_time=T)
+    beta1 = np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                     1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
+    par = TestParameters1(beta1, p=1/3, h=0.25, period_time=T)
     t_0_array, a_array, kappa_re_lct = recursive_lct_test(
-        par, '../../figures/periodic/fct_re_variable_p03', a_max=2,
+        par, '../../figures/periodic/lct_re_test1_p03', a_max=2,
         t_0_max=2)
     return t_0_array, a_array, kappa_re_lct
 
 
 def main2():
-    t_0_array, a_array, kappa_plus = recursive_lct_test(VariableParameters(
-        p=1/3, h=0.5), '../../figures/periodic/lct_re_variable_p03', a_max=2,
+    T = 7  # days
+    beta2 = np.array([1, 1, 1, 1, 3, 3, 3, 3, 3.5, 3.5, 3.5, 3.5, 4, 4, 4, 4,
+                      3, 3, 3, 3, 2, 2, 2, 2, 1, 1, 1, 1])
+    par = TestParameters2(beta2, p=1/3, h=0.25, period_time=T)
+    t_0_array, a_array, kappa_re_lct = recursive_lct_test(
+        par, '../../figures/periodic/lct_re_test2_p03', a_max=2,
         t_0_max=2)
-    return t_0_array, a_array, kappa_plus
-
-
-def main3():
-    print('Running simulation LCT with constant parameters and p=0.0')
-    recursive_lct_test(ConstantParameters(p=0, h=0.5),
-                       '../../figures/non_periodic/lct_re_constant_p0')
-    print('Running simulation LCT with constant parameters and p=1/3')
-    recursive_lct_test(ConstantParameters(p=1/3, h=0.5),
-                       '../../figures/periodic/lct_re_constant_p03')
-    print('Running simulation LCT with constant parameters and p=2/3')
-    recursive_lct_test(ConstantParameters(p=2/3, h=0.5),
-                       '../../figures/periodic/lct_re_constant_p06')
-    print('Running simulation LCT with constant parameters and p=1')
-    recursive_lct_test(ConstantParameters(p=1, h=0.5),
-                       '../../figures/periodic/lct_re_constant_p1')
-
-    print('Running simulation LCT with variable parameters and p=0.0')
-    recursive_lct_test(VariableParameters(p=0, h=0.5),
-                       '../../figures/non_periodic/lct_re_variable_p0')
-    print('Running simulation LCT with variable parameters and p=1/3')
-    recursive_lct_test(VariableParameters(p=1/3, h=0.5),
-                       '../../figures/periodic/lct_re_variable_p03')
-    print('Running simulation LCT with variable parameters and p=2/3')
-    recursive_lct_test(VariableParameters(p=2/3, h=0.5),
-                       '../../figures/periodic/lct_re_variable_p06')
-    print('Running simulation LCT with variable parameters and p=1')
-    recursive_lct_test(VariableParameters(p=1, h=0.5),
-                       '../../figures/periodic/lct_re_variable_p1')
+    return t_0_array, a_array, kappa_re_lct
 
 
 if __name__ == '__main__':
-    t_0_array, a_array, kappa_re_lct = main()
+    t_0_array, a_array, kappa_re_lct = main2()

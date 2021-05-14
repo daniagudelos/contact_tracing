@@ -7,7 +7,7 @@ Created on Mon Feb  8 08:47:09 2021
 """
 from scipy.integrate import solve_ivp
 from scipy.integrate import simps as simpson
-from parameters.parameters import TestParameters1
+from parameters.parameters import TestParameters1, TestParameters2
 import numpy as np
 from helper.plotter import Plotter
 
@@ -135,8 +135,8 @@ def one_time_bct_test(pars, filename, a_max=2, t_0_max=6):
     t_0_array, a_array, kappa_minus = otbct.calculate_kappa_minus()
     a, t_0 = np.meshgrid(a_array, t_0_array)
 
-    mx = round(t_0_max * pars.get_period() / 10)
-    my = round(a_max * pars.get_period() / 10)
+    mx = round(t_0_max * pars.get_period() / 7)
+    my = round(a_max * pars.get_period() / 7)
     Plotter.plot_3D(t_0, a, kappa_minus, filename + '_60_10', mx=mx, my=my)
     Plotter.plot_3D(t_0, a, kappa_minus, filename + '_n60_10', azim=-60,
                     mx=mx, my=my)
@@ -145,14 +145,25 @@ def one_time_bct_test(pars, filename, a_max=2, t_0_max=6):
 
 def main():
     T = 7  # days
+    beta1 = np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                      1, 1, 1, 1, 1, 1, 1, 1, 1])
+    par = TestParameters1(beta1, p=1/3, h=0.25, period_time=T)
+    t_0_array, a_array, kappa_ot_bct = one_time_bct_test(
+        par, '../../figures/periodic/bct_ot_test1_p03', a_max=2,
+        t_0_max=2)
+    return t_0_array, a_array, kappa_ot_bct
+
+
+def main2():
+    T = 7  # days
     beta2 = np.array([1, 1, 1, 1, 3, 3, 3, 3, 3.5, 3.5, 3.5, 3.5, 4, 4, 4, 4,
                       3, 3, 3, 3, 2, 2, 2, 2, 1, 1, 1, 1])
-    par = TestParameters1(beta2, p=1/3, h=0.25, period_time=T)
+    par = TestParameters2(beta2, p=1/3, h=0.25, period_time=T)
     t_0_array, a_array, kappa_ot_bct = one_time_bct_test(
-        par, '../../figures/periodic/bct_ot_test_p03', a_max=2,
+        par, '../../figures/periodic/bct_ot_test2_p03', a_max=2,
         t_0_max=2)
     return t_0_array, a_array, kappa_ot_bct
 
 
 if __name__ == '__main__':
-    t_0_array, a_array, kappa_ot_bct = main()
+    t_0_array, a_array, kappa_ot_bct = main2()

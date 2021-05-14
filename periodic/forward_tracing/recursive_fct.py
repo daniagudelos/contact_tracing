@@ -7,12 +7,12 @@ Created on Thu Jan 21 19:05:06 2021
 """
 from periodic.no_contact_tracing import NoCT
 from periodic.backward_tracing.recursive_bct import RecursiveBCT
-from parameters.parameters import TestParameters1
+from parameters.parameters import TestParameters1, TestParameters2
 import numpy as np
 from scipy.integrate import simps as simpson
 from joblib import Parallel, delayed
 from helper.plotter import Plotter
-from helper.exporter import Exporter
+# from helper.exporter import Exporter
 
 
 class RecursiveFCT:
@@ -146,28 +146,37 @@ class RecursiveFCT:
 
 def recursive_fct_test(pars, filename, a_max=2, t_0_max=6):
     refct = RecursiveFCT(pars, n_gen=5, a_max=a_max, t_0_max=t_0_max)
-    t_0_array, a_array, kappa_plus = refct.calculate_kappa_plus()
+    t_0_array, a_array, kappa_re_fct = refct.calculate_kappa_plus()
     a, t_0 = np.meshgrid(a_array, t_0_array)
-    mx = round(t_0_max * pars.get_period() / 10)
-    my = round(a_max * pars.get_period() / 10)
-    Plotter.plot_3D(t_0, a, kappa_plus, filename + '_60_10', mx=mx, my=my)
-    Plotter.plot_3D(t_0, a, kappa_plus, filename + '_n60_10', azim=-60,
+    mx = round(t_0_max * pars.get_period() / 7)
+    my = round(a_max * pars.get_period() / 7)
+    Plotter.plot_3D(t_0, a, kappa_re_fct, filename + '_60_10', mx=mx, my=my)
+    Plotter.plot_3D(t_0, a, kappa_re_fct, filename + '_n60_10', azim=-60,
                     mx=mx, my=my)
-    return t_0_array, a_array, kappa_plus
+    return t_0_array, a_array, kappa_re_fct
 
 
 def main():
     T = 7  # days
-    # beta2 = np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-    #                  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
+    beta1 = np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                     1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
+    par = TestParameters1(beta1, p=1/3, h=0.25, period_time=T)
+    t_0_array, a_array, kappa_re_fct = recursive_fct_test(
+        par, '../../figures/periodic/fct_re_test1_p03', a_max=2,
+        t_0_max=2)
+    return t_0_array, a_array, kappa_re_fct
+
+
+def main2():
+    T = 7  # days
     beta2 = np.array([1, 1, 1, 1, 3, 3, 3, 3, 3.5, 3.5, 3.5, 3.5, 4, 4, 4, 4,
                       3, 3, 3, 3, 2, 2, 2, 2, 1, 1, 1, 1])
-    par = TestParameters1(beta2, p=1/3, h=0.25, period_time=T)
-    t_0_array, a_array, kappa_plus = recursive_fct_test(
-        par, '../../figures/periodic/fct_re_variable_p03', a_max=2,
+    par = TestParameters2(beta2, p=1/3, h=0.25, period_time=T)
+    t_0_array, a_array, kappa_re_fct = recursive_fct_test(
+        par, '../../figures/periodic/fct_re_test2_p03', a_max=2,
         t_0_max=2)
-    return t_0_array, a_array, kappa_plus
+    return t_0_array, a_array, kappa_re_fct
 
 
 if __name__ == '__main__':
-    t_0_array, a_array, kappa_plus = main()
+    t_0_array, a_array, kappa_re_fct = main2()
