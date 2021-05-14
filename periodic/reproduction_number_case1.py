@@ -210,15 +210,18 @@ class ReproductionNumberCalculator:
 def main():
     T = 7
 
+    beta0 = np.array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                      1, 1, 1, 1, 1, 1, 1, 1, 1])
+
     # beta0 = np.array([1e-8, 1e-8, 1e-8, 1e-8, 1e-8, 1e-8, 1e-8, 1e-8,
     #                   1e-8, 1e-8, 1e-8, 461, 1e-8, 1e-8, 1e-8, 1e-8,
     #                   1e-8, 1e-8, 1e-8, 1e-8, 1e-8, 1e-8, 1e-8, 1e-8,
     #                   1e-8, 1e-8, 1e-8, 1e-8])
 
-    beta0 = np.array([0.835, 0.835, 0.835, 0.835, 0.835, 0.835, 0.835, 0.835,
-                      0.835, 0.835, 0.835, 0.835, 0.835, 0.835, 0.835, 0.835,
-                      0.835, 0.835, 0.835, 0.835, 0.835, 0.835, 0.835, 0.835,
-                      0.835, 0.835, 0.835, 0.835])
+    # beta0 = np.array([0.835, 0.835, 0.835, 0.835, 0.835, 0.835, 0.835, 0.835,
+    #                   0.835, 0.835, 0.835, 0.835, 0.835, 0.835, 0.835, 0.835,
+    #                   0.835, 0.835, 0.835, 0.835, 0.835, 0.835, 0.835, 0.835,
+    #                   0.835, 0.835, 0.835, 0.835])
 
     par = TestParameters1(beta0, p=1/3, h=0.25, period_time=T)
 
@@ -231,7 +234,7 @@ def main():
     logger.addHandler(fh)
 
     rnc = ReproductionNumberCalculator(logger, par, a_max=2, t_0_max=2)
-    ew1 = rnc.calculateReproductionNumber(beta0, 1)
+    ew1 = rnc.calculateReproductionNumber(beta0, 6)
     return ew1
 
 
