@@ -245,7 +245,12 @@ class TestParameters2(Parameters):
         """
         Derivative of beta wrt a
         """
-        return 0
+        # Because beta1 = const
+        # d(beta)/da = 0 + b(a) * d(beta(t(a)))/a
+        # t might be a function of a: e.g. t + a - b
+        derivative = self.get_beta1(a) * (self.get_beta2(t) -
+                                          self.get_beta2(t + self.h))/self.h
+        return derivative
 
     def get_mu(self, a):
         return self.mu
